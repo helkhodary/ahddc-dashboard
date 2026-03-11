@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AHD Diagnostic Center — Performance Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{--bg:#050d1a;--surface:#0a1628;--surface2:#0f1e35;--border:rgba(0,180,255,0.12);--accent:#00b4ff;--accent2:#00ffc8;--accent3:#ff6b35;--accent4:#c084fc;--text:#e8f4ff;--muted:#6b8aaa;--up:#00ffc8;--down:#ff4d6d;--warn:#ffbb35;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-size:13px;line-height:1.5;min-height:100vh;}
+.container{max-width:1600px;margin:0 auto;padding:0 24px;position:relative;z-index:1;}
+header{border-bottom:1px solid var(--border);padding:20px 0;margin-bottom:28px;}
+.header-inner{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;}
+.logo-block{display:flex;align-items:center;gap:16px;}
+.logo-icon{width:44px;height:44px;background:linear-gradient(135deg,#00b4ff22,#00ffc822);border:1px solid var(--accent);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:22px;}
+.logo-text h1{font-family:'Syne',sans-serif;font-size:18px;font-weight:800;letter-spacing:0.03em;}
+.logo-text p{font-size:11px;color:var(--muted);letter-spacing:0.1em;text-transform:uppercase;margin-top:1px;}
+.header-meta{display:flex;gap:20px;align-items:center;}
+.period-badge{background:rgba(0,180,255,0.08);border:1px solid var(--border);border-radius:6px;padding:6px 14px;font-family:'DM Mono',monospace;font-size:11px;color:var(--accent);}
+.live-dot{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--up);font-family:'DM Mono',monospace;}
+.live-dot::before{content:'';width:6px;height:6px;background:var(--up);border-radius:50%;animation:pulse 2s infinite;}
+@keyframes pulse{0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(0,255,200,0.4);}50%{opacity:0.7;box-shadow:0 0 0 4px rgba(0,255,200,0);}}
+.tabs{display:flex;gap:4px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:4px;margin-bottom:24px;width:fit-content;}
+.tab{padding:8px 20px;border-radius:7px;cursor:pointer;font-family:'Syne',sans-serif;font-size:12px;font-weight:600;letter-spacing:0.05em;text-transform:uppercase;color:var(--muted);transition:all 0.2s;border:none;background:none;}
+.tab:hover{color:var(--text);}
+.tab.active{background:linear-gradient(135deg,rgba(0,180,255,0.2),rgba(0,255,200,0.1));border:1px solid rgba(0,180,255,0.3);color:var(--accent);}
+.page{display:none;}
+.page.active{display:block;}
+.kpi-strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:24px;}
+.kpi{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 18px;position:relative;overflow:hidden;}
+.kpi::after{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--kpi-color,var(--accent));opacity:0.7;}
+.kpi-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em;font-family:'DM Mono',monospace;margin-bottom:6px;}
+.kpi-value{font-family:'Syne',sans-serif;font-size:26px;font-weight:800;line-height:1;}
+.kpi-sub{display:flex;align-items:center;gap:6px;margin-top:6px;}
+.kpi-change{font-family:'DM Mono',monospace;font-size:11px;padding:2px 6px;border-radius:4px;}
+.kpi-change.up{color:var(--up);background:rgba(0,255,200,0.1);}
+.kpi-change.down{color:var(--down);background:rgba(255,77,109,0.1);}
+.kpi-period{font-size:10px;color:var(--muted);}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;}
+.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:16px;}
+.grid-12{display:grid;grid-template-columns:1fr 2fr;gap:16px;margin-bottom:16px;}
+.grid-21{display:grid;grid-template-columns:2fr 1fr;gap:16px;margin-bottom:16px;}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px 20px;margin-bottom:0;}
+.card-title{font-family:'Syne',sans-serif;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.12em;color:var(--muted);margin-bottom:14px;display:flex;align-items:center;gap:8px;}
+.card-title .dot{width:6px;height:6px;border-radius:50%;background:var(--title-color,var(--accent));flex-shrink:0;}
+.chart-wrap{position:relative;}
+.mod-table{width:100%;border-collapse:collapse;}
+.mod-table th{font-family:'DM Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);text-align:right;padding:6px 8px;border-bottom:1px solid var(--border);}
+.mod-table th:first-child{text-align:left;}
+.mod-table td{padding:7px 8px;text-align:right;font-family:'DM Mono',monospace;font-size:12px;border-bottom:1px solid rgba(0,180,255,0.05);}
+.mod-table td:first-child{text-align:left;color:var(--text);font-family:'Inter',sans-serif;}
+.mod-table tr:last-child td{border-bottom:none;font-weight:600;color:var(--accent);border-top:1px solid var(--border);padding-top:9px;}
+.chg{padding:2px 5px;border-radius:3px;font-size:10px;}
+.chg.up{color:var(--up);}
+.chg.dn{color:var(--down);}
+.bar-mini-wrap{display:flex;flex-direction:column;gap:7px;}
+.bar-row{display:flex;align-items:center;gap:8px;}
+.bar-label{width:110px;font-size:11px;color:var(--text);flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.bar-track{flex:1;height:6px;background:rgba(255,255,255,0.05);border-radius:3px;overflow:hidden;}
+.bar-fill{height:100%;border-radius:3px;transition:width 0.8s cubic-bezier(0.4,0,0.2,1);}
+.bar-val{width:62px;text-align:right;font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);flex-shrink:0;}
+.section-header{font-family:'Syne',sans-serif;font-size:13px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.12em;padding:10px 0 8px;border-bottom:1px solid var(--border);margin-bottom:16px;display:flex;align-items:center;gap:10px;}
+.section-header::before{content:'—';color:var(--muted);}
+.insight{background:rgba(0,180,255,0.04);border:1px solid rgba(0,180,255,0.15);border-left:3px solid var(--accent);border-radius:8px;padding:12px 14px;margin-top:12px;font-size:12px;color:var(--muted);line-height:1.6;}
+.insight strong{color:var(--text);}
+.badge-up{color:var(--up);font-family:'DM Mono',monospace;font-size:11px;}
+.badge-dn{color:var(--down);font-family:'DM Mono',monospace;font-size:11px;}
+.badge-warn{color:var(--warn);font-family:'DM Mono',monospace;font-size:11px;}
+footer{border-top:1px solid var(--border);padding:16px 0;margin-top:32px;display:flex;justify-content:space-between;align-items:center;font-size:10px;color:var(--muted);font-family:'DM Mono',monospace;}
+::-webkit-scrollbar{width:4px;}::-webkit-scrollbar-track{background:var(--bg);}::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+@media(max-width:1100px){.grid-3{grid-template-columns:1fr 1fr;}.grid-12,.grid-21{grid-template-columns:1fr;}}
+@media(max-width:760px){.grid-2,.grid-3{grid-template-columns:1fr;}.kpi-strip{grid-template-columns:repeat(2,1fr);}}
+</style>
+</head>
+<body>
+<div class="container">
+<header>
+  <div class="header-inner">
+    <div class="logo-block">
+      <div class="logo-icon">🏥</div>
+      <div class="logo-text">
+        <h1>AHD Diagnostic Center</h1>
+        <p>Unified Medical Imaging &amp; Laboratory Analytics</p>
+      </div>
+    </div>
+    <div class="header-meta">
+      <div class="period-badge">Jan 1 – Mar 10, 2026</div>
+      <div class="live-dot">Current Period</div>
+    </div>
+  </div>
+</header>
+
+<div class="tabs">
+  <button class="tab active" onclick="showPage('overview',this)">Overview</button>
+  <button class="tab" onclick="showPage('imaging',this)">Medical Imaging</button>
+  <button class="tab" onclick="showPage('lab',this)">Laboratory</button>
+  <button class="tab" onclick="showPage('sites',this)">Sites &amp; Variability</button>
+</div>
+
+<!-- OVERVIEW -->
+<div id="page-overview" class="page active">
+  <div class="kpi-strip">
+    <div class="kpi" style="--kpi-color:#00b4ff"><div class="kpi-label">Total MID — Jan</div><div class="kpi-value">10,921</div><div class="kpi-sub"><span class="kpi-change down">−5.0% vs Feb</span></div></div>
+    <div class="kpi" style="--kpi-color:#00ffc8"><div class="kpi-label">Total MID — Feb</div><div class="kpi-value">10,372</div><div class="kpi-sub"><span class="kpi-period">Avg 370/day</span></div></div>
+    <div class="kpi" style="--kpi-color:#ff6b35"><div class="kpi-label">MID Mar 1–10</div><div class="kpi-value">2,957</div><div class="kpi-sub"><span class="kpi-change up">296/day pace</span></div></div>
+    <div class="kpi" style="--kpi-color:#c084fc"><div class="kpi-label">Lab Tests — Jan</div><div class="kpi-value">186,424</div><div class="kpi-sub"><span class="kpi-change down">−6.0% vs Feb</span></div></div>
+    <div class="kpi" style="--kpi-color:#ffbb35"><div class="kpi-label">Lab Tests — Feb</div><div class="kpi-value">175,253</div><div class="kpi-sub"><span class="kpi-period">6,259/day avg</span></div></div>
+    <div class="kpi" style="--kpi-color:#00b4ff"><div class="kpi-label">Combined Jan Total</div><div class="kpi-value">~197K</div><div class="kpi-sub"><span class="kpi-period">Imaging + Lab</span></div></div>
+  </div>
+  <div class="grid-21">
+    <div class="card">
+      <div class="card-title"><span class="dot"></span>Daily MID Volume — Jan &amp; Feb</div>
+      <div class="chart-wrap" style="height:220px"><canvas id="chartDailyTrend"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="dot" style="background:var(--accent4)"></span>Modality Mix — Feb 2026</div>
+      <div class="chart-wrap" style="height:220px"><canvas id="chartModalityPie"></canvas></div>
+    </div>
+  </div>
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title"><span class="dot" style="background:var(--accent3)"></span>Imaging Modality — Jan vs Feb vs Mar (10d)</div>
+      <table class="mod-table"><thead><tr><th>Modality</th><th>Jan</th><th>Feb</th><th>Mar 1–10</th><th>Δ Jan→Feb</th></tr></thead><tbody id="modTableBody"></tbody></table>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="dot" style="background:var(--accent2)"></span>Lab Volume by Department</div>
+      <div class="chart-wrap" style="height:200px;margin-bottom:14px"><canvas id="chartLabType"></canvas></div>
+      <div class="insight"><strong>Observation:</strong> Chemistry dominates at ~75% of total lab volume. Anatomic Pathology rose <strong>+14.2%</strong> Jan→Feb (1,498→1,711). Nuclear Medicine up +35.6% in imaging.</div>
+    </div>
+  </div>
+</div>
+
+<!-- IMAGING -->
+<div id="page-imaging" class="page">
+  <div class="section-header">Medical Imaging Performance</div>
+  <div class="kpi-strip">
+    <div class="kpi" style="--kpi-color:#00b4ff"><div class="kpi-label">CT — Jan→Feb</div><div class="kpi-value">1,266→1,203</div><div class="kpi-sub"><span class="kpi-change down">−5.0%</span></div></div>
+    <div class="kpi" style="--kpi-color:#00ffc8"><div class="kpi-label">MRI — Jan→Feb</div><div class="kpi-value">1,419→1,334</div><div class="kpi-sub"><span class="kpi-change down">−6.0%</span></div></div>
+    <div class="kpi" style="--kpi-color:#ff6b35"><div class="kpi-label">Ultrasound Jan→Feb</div><div class="kpi-value">3,226→3,058</div><div class="kpi-sub"><span class="kpi-change down">−5.2%</span></div></div>
+    <div class="kpi" style="--kpi-color:#c084fc"><div class="kpi-label">X-Ray — Jan→Feb</div><div class="kpi-value">4,009→3,850</div><div class="kpi-sub"><span class="kpi-change down">−4.0%</span></div></div>
+    <div class="kpi" style="--kpi-color:#ffbb35"><div class="kpi-label">Nuc Med — Jan→Feb</div><div class="kpi-value">101→137</div><div class="kpi-sub"><span class="kpi-change up">+35.6% ↑</span></div></div>
+    <div class="kpi" style="--kpi-color:#ff4d6d"><div class="kpi-label">Fluoroscopy Jan→Feb</div><div class="kpi-value">53→37</div><div class="kpi-sub"><span class="kpi-change down">−30.2%</span></div></div>
+  </div>
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title"><span class="dot"></span>Modality Volumes — 3-Period</div>
+      <div class="chart-wrap" style="height:260px"><canvas id="chartModalityBar"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="dot" style="background:var(--accent3)"></span>Ultrasound by Section — Jan vs Feb</div>
+      <div class="chart-wrap" style="height:260px"><canvas id="chartUSSections"></canvas></div>
+    </div>
+  </div>
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title"><span class="dot" style="background:var(--accent4)"></span>X-Ray by Site — January</div>
+      <div class="bar-mini-wrap" id="xrayJanBars"></div>
+      <div class="insight" style="margin-top:14px"><strong>Main AHD</strong> = 54% of X-ray volume (2,148/4,009). Ortho = 2nd largest (758). Satellite clinics combined = 1,043 (26%).</div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="dot" style="background:var(--accent2)"></span>X-Ray by Site — February (incl. Science Park)</div>
+      <div class="bar-mini-wrap" id="xrayFebBars"></div>
+      <div class="insight" style="margin-top:14px"><strong>Science Park</strong> adds 362 X-rays in Feb. Despite decline elsewhere, SP entry partially offsets volume drop. Total Feb = 3,850 (−4% vs Jan).</div>
+    </div>
+  </div>
+  <div class="grid-12">
+    <div class="card">
+      <div class="card-title"><span class="dot" style="background:var(--accent3)"></span>Mar 1–10 Pace vs Monthly Avg</div>
+      <div class="bar-mini-wrap" id="marPaceBars"></div>
+      <div class="insight" style="margin-top:12px">Mar daily avg: <strong>296/day</strong>. Feb avg was 370/day. Projected full-month March ≈ 9,170 at current pace.</div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="dot"></span>Specialty Modalities — 3-Period</div>
+      <div class="chart-wrap" style="height:200px"><canvas id="chartSpecialty"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<!-- LAB -->
+<div id="page-lab" class="page">
+  <div class="section-header">Laboratory Performance</div>
+  <div class="kpi-strip">
+    <div class="kpi" style="--kpi-color:#00ffc8"><div class="kpi-label">Total Tests — Jan</div><div class="kpi-value">186,424</div><div class="kpi-sub"><span class="kpi-change down">−6.0% vs Feb</span></div></div>
+    <div class="kpi" style="--kpi-color:#c084fc"><div class="kpi-label">Total Tests — Feb</div><div class="kpi-value">175,253</div><div class="kpi-sub"><span class="kpi-period">6,259/day avg</span></div></div>
+    <div class="kpi" style="--kpi-color:#ffbb35"><div class="kpi-label">Mar 1–10 (est.)</div><div class="kpi-value">~62,590</div><div class="kpi-sub"><span class="kpi-period">Based on Feb rate</span></div></div>
+    <div class="kpi" style="--kpi-color:#00b4ff"><div class="kpi-label">Chemistry Share</div><div class="kpi-value">~75%</div><div class="kpi-sub"><span class="kpi-period">131–140K/month</span></div></div>
+    <div class="kpi" style="--kpi-color:#00ffc8"><div class="kpi-label">Anat. Pathology</div><div class="kpi-value">+14.2%</div><div class="kpi-sub"><span class="kpi-change up">1,498 → 1,711</span></div></div>
+    <div class="kpi" style="--kpi-color:#ff6b35"><div class="kpi-label">Top Assay (Jan)</div><div class="kpi-value">CBC</div><div class="kpi-sub"><span class="kpi-period">9,083 tests</span></div></div>
+  </div>
+  <div class="grid-21">
+    <div class="card">
+      <div class="card-title"><span class="dot" style="background:var(--accent2)"></span>Lab Volume by Subtype — Jan vs Feb</div>
+      <div class="chart-wrap" style="height:240px"><canvas id="chartLabSubtype"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="dot" style="background:var(--accent4)"></span>Lab by Department</div>
+      <div class="chart-wrap" style="height:240px"><canvas id="chartLabDept"></canvas></div>
+    </div>
+  </div>
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title"><span class="dot"></span>Ordering Facility — January</div>
+      <div class="bar-mini-wrap" id="labJanClientBars"></div>
+      <div class="insight" style="margin-top:14px"><strong>AHD Main</strong> = 78% of Jan lab volume (145,880). Al Barsha is leading satellite (11,071). Science Park = only 191 in Jan.</div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="dot" style="background:var(--accent3)"></span>Ordering Facility — February</div>
+      <div class="bar-mini-wrap" id="labFebClientBars"></div>
+      <div class="insight" style="margin-top:14px"><strong>Science Park</strong> jumped to 10,753 in Feb (+5,527%). AHD Main declined −14% (145K→126K). Jumeirah Clinic dropped −33%.</div>
+    </div>
+  </div>
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-title"><span class="dot" style="background:var(--warn)"></span>Facility Lab Volume % Change — Jan→Feb</div>
+    <div class="chart-wrap" style="height:200px"><canvas id="chartClientChange"></canvas></div>
+  </div>
+</div>
+
+<!-- SITES -->
+<div id="page-sites" class="page">
+  <div class="section-header">Site-to-Site Variability &amp; Dynamics</div>
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title"><span class="dot"></span>Feb Imaging: Oud Metha vs Science Park</div>
+      <div class="chart-wrap" style="height:180px"><canvas id="chartSitePie"></canvas></div>
+      <div class="insight" style="margin-top:12px">Science Park = <strong>9.8%</strong> of Feb MID volume (1,021/10,372). Growing across all modalities: CT (132), MRI (143), US (360), X-Ray (362).</div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="dot" style="background:var(--accent3)"></span>Ultrasound Section Variability — Radar</div>
+      <div class="chart-wrap" style="height:180px"><canvas id="chartUSVariability"></canvas></div>
+      <div class="insight" style="margin-top:12px">ER US dropped <strong>−8%</strong>. OBS/Gyne fell <strong>−15%</strong>. ER remains highest-volume section. Primary Care slight increase.</div>
+    </div>
+  </div>
+  <div class="grid-3">
+    <div class="card">
+      <div class="card-title"><span class="dot" style="background:var(--accent4)"></span>Satellite X-Ray — Jan</div>
+      <div class="bar-mini-wrap" id="satXrayJan"></div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="dot" style="background:var(--accent2)"></span>Satellite X-Ray — Feb</div>
+      <div class="bar-mini-wrap" id="satXrayFeb"></div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="dot" style="background:var(--warn)"></span>Satellite X-Ray % Change</div>
+      <div class="chart-wrap" style="height:160px"><canvas id="chartSatChange"></canvas></div>
+    </div>
+  </div>
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title"><span class="dot"></span>Lab Orders by Facility — Jan vs Feb</div>
+      <div class="chart-wrap" style="height:240px"><canvas id="chartClientCompare"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="dot" style="background:var(--accent3)"></span>Key Variability Indicators Summary</div>
+      <table class="mod-table" style="margin-top:4px">
+        <thead><tr><th>Metric</th><th>Jan</th><th>Feb</th><th>Δ</th></tr></thead>
+        <tbody>
+          <tr><td>MID Daily Avg</td><td>352</td><td>370</td><td class="badge-up">+5.1%</td></tr>
+          <tr><td>Science Park MID</td><td>—</td><td>1,021</td><td class="badge-up">New</td></tr>
+          <tr><td>Science Park Lab</td><td>191</td><td>10,753</td><td class="badge-up">+5,527%</td></tr>
+          <tr><td>Al Barsha Lab</td><td>11,071</td><td>9,850</td><td class="badge-dn">−11.0%</td></tr>
+          <tr><td>Jumeirah Lab</td><td>4,514</td><td>3,005</td><td class="badge-dn">−33.4%</td></tr>
+          <tr><td>Nuc Med</td><td>101</td><td>137</td><td class="badge-up">+35.6%</td></tr>
+          <tr><td>Fluoroscopy</td><td>53</td><td>37</td><td class="badge-dn">−30.2%</td></tr>
+          <tr><td>OBS/Gyne US</td><td>313</td><td>267</td><td class="badge-dn">−14.7%</td></tr>
+          <tr><td>Total MID</td><td>10,921</td><td>10,372</td><td class="badge-dn">−5.0%</td></tr>
+          <tr><td>Total Lab</td><td>186,424</td><td>175,253</td><td class="badge-dn">−6.0%</td></tr>
+        </tbody>
+      </table>
+      <div style="font-size:10px;color:var(--muted);margin-top:10px">All % changes are month-over-month. SP data reflects operational expansion in Feb 2026.</div>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <span>AHD Diagnostic Center · Analytics Dashboard · Data: Jan 1 – Mar 10, 2026</span>
+  <span>Medical Imaging + Laboratory · Unified View</span>
+</footer>
+</div>
+
+<script>
+const ACCENT='#00b4ff',A2='#00ffc8',A3='#ff6b35',A4='#c084fc',WARN='#ffbb35',DOWN='#ff4d6d';
+Chart.defaults.color='#6b8aaa';
+Chart.defaults.borderColor='rgba(0,180,255,0.08)';
+Chart.defaults.font.family="'DM Mono',monospace";
+Chart.defaults.font.size=11;
+
+function pct(a,b){return ((b-a)/a*100).toFixed(1);}
+
+// Mod Table
+const modData=[
+  ['CT',1266,1203,342],['MRI',1419,1334,379],['Ultrasound',3226,3058,934],
+  ['X-Ray',4009,3850,1001],['Dexa',233,176,58],['Nuc Med',101,137,25],
+  ['PET-CT',108,92,26],['IR',401,400,150],['Fluoroscopy',53,37,42],['Total',10921,10372,2957]
+];
+const tb=document.getElementById('modTableBody');
+modData.forEach(([k,j,f,m])=>{
+  const d=pct(j,f);
+  const cls=d>=0?'up':'dn';
+  tb.innerHTML+=`<tr><td>${k}</td><td>${j.toLocaleString()}</td><td>${f.toLocaleString()}</td><td>${m.toLocaleString()}</td><td><span class="chg ${cls}">${d>=0?'+':''}${d}%</span></td></tr>`;
+});
+
+// Bar mini helper
+function bars(id,data,maxV,c1,c2,lw){
+  const el=document.getElementById(id);
+  if(!el)return;
+  const max=maxV||Math.max(...Object.values(data));
+  el.innerHTML=Object.entries(data).map(([k,v])=>`
+    <div class="bar-row">
+      <div class="bar-label" style="width:${lw||'110px'}">${k}</div>
+      <div class="bar-track"><div class="bar-fill" style="background:linear-gradient(90deg,${c1||ACCENT},${c2||A2});width:${(v/max*100).toFixed(1)}%"></div></div>
+      <div class="bar-val">${v.toLocaleString()}</div>
+    </div>`).join('');
+}
+
+bars('xrayJanBars',{'Main AHD':2148,Ortho:758,DMC:159,JMC:150,AKC:129,MCS:166,NAD:144,DHCC:190,ABC:165},null,A4,'#7c3aed');
+bars('xrayFebBars',{'Main AHD':1977,Ortho:584,SP:362,DMC:138,JMC:121,AKC:105,MCS:154,NAD:133,DHCC:145,ABC:131},null,A2,'#0891b2');
+bars('marPaceBars',{'CT (10d)':342,'MRI (10d)':379,'US (10d)':934,'X-Ray (10d)':1001,'IR (10d)':150,'Fluoro (10d)':42},1100,A3,WARN,'120px');
+bars('satXrayJan',{DMC:159,JMC:150,AKC:129,MCS:166,NAD:144,DHCC:190,ABC:165},400,A3,WARN,'80px');
+bars('satXrayFeb',{DMC:138,JMC:121,AKC:105,MCS:154,NAD:133,DHCC:145,ABC:131,SP:362},400,A2,'#0891b2','80px');
+bars('labJanClientBars',{'AHD Main':145880,'Al Barsha':11071,'Dubai MC':5763,'Al Khawaneej':5138,'Nad Al Sheba':4747,'Mira':4589,'Jumeirah':4514,'Dubai Hills':3873},null,ACCENT,A2,'130px');
+bars('labFebClientBars',{'AHD Main':126147,'AHD Sci Park':10753,'Al Barsha':9850,'Dubai MC':5997,'Al Khawaneej':5726,'Nad Al Sheba':5342,'Mira':4274,'Dubai Hills':3450},null,A4,A3,'130px');
+
+// Charts
+const cfg=(type,labels,datasets,opts)=>({type,data:{labels,datasets},options:{responsive:true,maintainAspectRatio:false,...opts}});
+
+// Daily trend
+const jL=Array.from({length:31},(_,i)=>`J${i+1}`);
+const fL=Array.from({length:28},(_,i)=>`F${i+1}`);
+new Chart(document.getElementById('chartDailyTrend'),{
+  type:'line',
+  data:{labels:[...jL,...fL],datasets:[
+    {label:'January',data:[6,211,320,423,358,381,369,394,240,365,391,399,434,392,390,246,404,508,360,394,420,406,220,344,422,351,393,400,389,213,308,...Array(28).fill(null)],borderColor:ACCENT,backgroundColor:'rgba(0,180,255,0.07)',borderWidth:1.5,pointRadius:0,fill:true,tension:0.4},
+    {label:'February',data:[...Array(31).fill(null),347,379,385,390,424,263,368,420,433,418,427,420,287,334,418,392,440,370,311,252,351,408,366,383,393,412,218,363],borderColor:A2,backgroundColor:'rgba(0,255,200,0.07)',borderWidth:1.5,pointRadius:0,fill:true,tension:0.4}
+  ]},
+  options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,position:'top',labels:{boxWidth:12,padding:12}},tooltip:{mode:'index',intersect:false}},scales:{x:{ticks:{maxTicksLimit:12,maxRotation:0},grid:{display:false}},y:{beginAtZero:false}}}
+});
+
+// Modality pie
+new Chart(document.getElementById('chartModalityPie'),{
+  type:'doughnut',
+  data:{labels:['CT','MRI','Ultrasound','X-Ray','IR','Dexa','Nuc Med','PET-CT','Fluoro'],datasets:[{data:[1203,1334,3058,3850,400,176,137,92,37],backgroundColor:[ACCENT,'#00e8b5',A3,A4,WARN,DOWN,'#38bdf8','#818cf8','#6b8aaa'],borderWidth:0,hoverOffset:8}]},
+  options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{boxWidth:10,padding:8,font:{size:10}}},tooltip:{callbacks:{label:ctx=>` ${ctx.label}: ${ctx.raw.toLocaleString()} (${(ctx.raw/10372*100).toFixed(1)}%)`}}},cutout:'65%'}
+});
+
+// Lab type
+new Chart(document.getElementById('chartLabType'),{
+  type:'bar',
+  data:{labels:['General Lab','Micro','Anat Path','Blood Bank'],datasets:[{label:'Jan',data:[180452,3239,1498,1235],backgroundColor:'rgba(0,180,255,0.6)',borderRadius:4},{label:'Feb',data:[169247,3022,1711,1273],backgroundColor:'rgba(0,255,200,0.6)',borderRadius:4}]},
+  options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,position:'top',labels:{boxWidth:10}}},scales:{x:{grid:{display:false}},y:{ticks:{callback:v=>v>=1000?v/1000+'K':v}}}}
+});
+
+// Modality bar
+new Chart(document.getElementById('chartModalityBar'),{
+  type:'bar',
+  data:{labels:['CT','MRI','US','X-Ray','IR','Dexa','NucMed','PET-CT'],datasets:[{label:'Jan',data:[1266,1419,3226,4009,401,233,101,108],backgroundColor:'rgba(0,180,255,0.65)',borderRadius:4},{label:'Feb',data:[1203,1334,3058,3850,400,176,137,92],backgroundColor:'rgba(0,255,200,0.65)',borderRadius:4},{label:'Mar 1-10',data:[342,379,934,1001,150,58,25,26],backgroundColor:'rgba(255,107,53,0.65)',borderRadius:4}]},
+  options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,position:'top',labels:{boxWidth:10}}},scales:{x:{grid:{display:false}},y:{beginAtZero:true}}}
+});
+
+// US sections
+new Chart(document.getElementById('chartUSSections'),{
+  type:'bar',
+  data:{labels:['Main','ER','Ortho','OBS/Gyne','Paeds','Endo','Surgical','Primary','Exec'],datasets:[{label:'Jan',data:[225,425,389,313,264,392,368,338,41],backgroundColor:'rgba(192,132,252,0.7)',borderRadius:3},{label:'Feb',data:[260,391,334,267,239,329,293,307,41],backgroundColor:'rgba(255,187,53,0.7)',borderRadius:3}]},
+  options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,position:'top',labels:{boxWidth:10}}},scales:{x:{grid:{display:false},ticks:{maxRotation:30}},y:{beginAtZero:true}}}
+});
+
+// Specialty
+new Chart(document.getElementById('chartSpecialty'),{
+  type:'line',
+  data:{labels:['Jan','Feb','Mar 1-10'],datasets:[
+    {label:'Dexa',data:[233,176,58],borderColor:A4,backgroundColor:'transparent',tension:0.4,pointRadius:5},
+    {label:'Nuc Med',data:[101,137,25],borderColor:A2,backgroundColor:'transparent',tension:0.4,pointRadius:5},
+    {label:'PET-CT',data:[108,92,26],borderColor:WARN,backgroundColor:'transparent',tension:0.4,pointRadius:5},
+    {label:'IR',data:[401,400,150],borderColor:A3,backgroundColor:'transparent',tension:0.4,pointRadius:5},
+    {label:'Fluoro',data:[53,37,42],borderColor:ACCENT,backgroundColor:'transparent',tension:0.4,pointRadius:5}
+  ]},
+  options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{boxWidth:10,padding:8,font:{size:10}}}},scales:{x:{grid:{display:false}},y:{beginAtZero:true}}}
+});
+
+// Lab subtype
+new Chart(document.getElementById('chartLabSubtype'),{
+  type:'bar',
+  data:{labels:['Chemistry','POC','Hematology','Endocrinology','Mol Path','Send Out','Coagulation','Other'],datasets:[{label:'Jan',data:[140001,11084,10407,7885,2440,2083,1800,4474],backgroundColor:'rgba(0,180,255,0.65)',borderRadius:3},{label:'Feb',data:[131635,9791,9806,7532,2285,1893,1815,4295],backgroundColor:'rgba(0,255,200,0.65)',borderRadius:3}]},
+  options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',plugins:{legend:{display:true,position:'top',labels:{boxWidth:10}}},scales:{y:{grid:{display:false},ticks:{font:{size:10}}},x:{ticks:{callback:v=>v>=1000?v/1000+'K':v}}}}
+});
+
+// Lab dept donut
+new Chart(document.getElementById('chartLabDept'),{
+  type:'doughnut',
+  data:{labels:['General Lab','Micro','Anat Path','Blood Bank'],datasets:[{data:[180452,3239,1498,1235],backgroundColor:[ACCENT,'#00e8b5',A3,A4],borderWidth:0,hoverOffset:6}]},
+  options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{boxWidth:10,padding:8,font:{size:10}}},tooltip:{callbacks:{label:ctx=>` ${ctx.label}: ${ctx.raw.toLocaleString()}`}}},cutout:'60%'}
+});
+
+// Client change bar
+const clients=['AHD Main','Al Barsha','Dubai MC','Al Khawaneej','Nad Al Sheba','Mira','Jumeirah','Dubai Hills'];
+const jV=[145880,11071,5763,5138,4747,4589,4514,3873];
+const fV=[126147,9850,5997,5726,5342,4274,3005,3450];
+const chgs=jV.map((j,i)=>parseFloat(pct(j,fV[i])));
+new Chart(document.getElementById('chartClientChange'),{
+  type:'bar',
+  data:{labels:clients,datasets:[{label:'% Change Jan→Feb',data:chgs,backgroundColor:chgs.map(v=>v>=0?'rgba(0,255,200,0.7)':'rgba(255,77,109,0.7)'),borderRadius:4}]},
+  options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false}},y:{ticks:{callback:v=>v+'%'}}}}
+});
+
+// Site pie
+new Chart(document.getElementById('chartSitePie'),{
+  type:'doughnut',
+  data:{labels:['Oud Metha','Science Park'],datasets:[{data:[9351,1021],backgroundColor:[ACCENT,A3],borderWidth:0,hoverOffset:8}]},
+  options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{boxWidth:12}},tooltip:{callbacks:{label:ctx=>` ${ctx.label}: ${ctx.raw.toLocaleString()} (${(ctx.raw/10372*100).toFixed(1)}%)`}}},cutout:'60%'}
+});
+
+// US radar
+new Chart(document.getElementById('chartUSVariability'),{
+  type:'radar',
+  data:{labels:['Main','ER','Ortho','OBS/Gyne','Paeds','Endo','Surgical','Primary','Exec'],datasets:[{label:'Jan',data:[225,425,389,313,264,392,368,338,41],borderColor:ACCENT,backgroundColor:'rgba(0,180,255,0.1)',pointBackgroundColor:ACCENT,borderWidth:1.5,pointRadius:3},{label:'Feb',data:[260,391,334,267,239,329,293,307,41],borderColor:A2,backgroundColor:'rgba(0,255,200,0.1)',pointBackgroundColor:A2,borderWidth:1.5,pointRadius:3}]},
+  options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{boxWidth:10}}},scales:{r:{ticks:{display:false},grid:{color:'rgba(0,180,255,0.1)'},angleLines:{color:'rgba(0,180,255,0.1)'},pointLabels:{font:{size:10}}}}}
+});
+
+// Sat change
+const satS=['DMC','JMC','AKC','MCS','NAD','DHCC','ABC'];
+const satJ=[159,150,129,166,144,190,165];
+const satF=[138,121,105,154,133,145,131];
+const satC=satJ.map((j,i)=>parseFloat(pct(j,satF[i])));
+new Chart(document.getElementById('chartSatChange'),{
+  type:'bar',
+  data:{labels:satS,datasets:[{label:'% Change',data:satC,backgroundColor:satC.map(v=>v>=0?'rgba(0,255,200,0.7)':'rgba(255,77,109,0.7)'),borderRadius:3}]},
+  options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false},ticks:{font:{size:10}}},y:{ticks:{callback:v=>v+'%'}}}}
+});
+
+// Client compare
+new Chart(document.getElementById('chartClientCompare'),{
+  type:'bar',
+  data:{labels:clients,datasets:[{label:'Jan',data:jV,backgroundColor:'rgba(0,180,255,0.6)',borderRadius:3},{label:'Feb',data:fV,backgroundColor:'rgba(0,255,200,0.6)',borderRadius:3}]},
+  options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,position:'top',labels:{boxWidth:10}}},scales:{x:{grid:{display:false},ticks:{maxRotation:30,font:{size:10}}},y:{ticks:{callback:v=>v>=1000?v/1000+'K':v}}}}
+});
+
+function showPage(id,btn){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  btn.classList.add('active');
+}
+</script>
+</body>
+</html>
