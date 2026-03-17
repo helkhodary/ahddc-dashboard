@@ -215,6 +215,41 @@ footer{border-top:1px solid var(--border);padding:16px 0;margin-top:32px;display
   #page-volumes .grid21, #page-physicians .grid21 { grid-template-columns: 1fr; }
 }
 
+
+/* ── Chart & donut sizing fixes ── */
+canvas { display: block; }
+
+/* Donut charts: ensure they don't over-expand */
+#page-tests canvas[id="subtypePie"],
+#page-encounter canvas[id="encPieChart"] {
+  max-height: 240px !important;
+}
+#page-physicians canvas[id="specDonut"] {
+  max-height: 260px !important;
+}
+
+/* Force all chart legend text to be readable on dark bg */
+.chartjs-legend li span { color: #9bb8d8 !important; }
+
+/* Full-dash section cards: ensure chart wraps are sized properly */
+#page-volumes .card canvas,
+#page-encounter .card canvas,
+#page-tat .card canvas,
+#page-physicians .card canvas,
+#page-tests .card canvas {
+  max-height: 320px;
+}
+
+/* Physician specialty donut fix */
+#page-physicians .grid21 > .card:last-child {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+/* Tighten donut legend spacing */
+.chart-wrap { position: relative; height: 100%; }
+
 </style>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 </head>
@@ -269,7 +304,7 @@ footer{border-top:1px solid var(--border);padding:16px 0;margin-top:32px;display
   <div class="grid-2">
     <div class="card">
       <div class="card-title"><span class="dot" style="background:var(--accent3)"></span>Imaging Modality — Jan vs Feb vs Mar (10d)</div>
-      <table class="mod-table"><thead><tr><th>Modality</th><th>Jan</th><th>Feb</th><th>Mar 1–11</th><th>Δ Jan→Feb</th></tr></thead><tbody id="modTableBody"></tbody></table>
+      <table class="mod-table"><thead><tr><th>Modality</th><th>Jan</th><th>Feb</th><th>Mar 1–11</th><th>Δ Jan→Feb</th></tr></thead><tbody id="modTableBody"></tbody></table><div style="font-size:10px;color:var(--muted);margin-top:8px">Mar 1–16, 2026 · Oud Metha + Science Park + Satellite Clinics</div>
     </div>
     <div class="card">
       <div class="card-title"><span class="dot" style="background:var(--accent2)"></span>Lab Volume by Department</div>
@@ -316,7 +351,7 @@ footer{border-top:1px solid var(--border);padding:16px 0;margin-top:32px;display
     <div class="card">
       <div class="card-title"><span class="dot" style="background:var(--accent3)"></span>Mar 1–10 Pace vs Monthly Avg</div>
       <div class="bar-mini-wrap" id="marPaceBars"></div>
-      <div class="insight" style="margin-top:12px">Mar daily avg: <strong>300/day</strong> (11 days tracked). Feb avg was 370/day. Projected full-month March ≈ 9,300 at current pace.</div>
+      <div class="insight" style="margin-top:12px">Mar 1–16 avg: <strong>277/day</strong> (16 days). Feb avg 370/day (−25%). Projected March ≈ <strong>8,599</strong> (11 days tracked). Feb avg was 370/day. Projected full-month March ≈ 9,300 at current pace.</div>
     </div>
     <div class="card">
       <div class="card-title"><span class="dot"></span>Specialty Modalities — 3-Period</div>
@@ -382,7 +417,7 @@ footer{border-top:1px solid var(--border);padding:16px 0;margin-top:32px;display
     <div class="card">
       <div class="card-title"><span class="dot"></span>Feb Imaging: Oud Metha vs Science Park</div>
       <div class="chart-wrap" style="height:180px"><canvas id="chartSitePie"></canvas></div>
-      <div class="insight" style="margin-top:12px">Science Park = <strong>9.8%</strong> of Feb MID volume (1,021/10,372). Growing across all modalities: CT (132), MRI (143), US (360), X-Ray (362).</div>
+      <div class="insight" style="margin-top:12px">Science Park = <strong>9.8%</strong> of Feb MID (1,021/10,372). Mar 12–16: SP contributed <strong>155</strong> exams — CT (24), MRI (19), US (69), X-Ray (42), Fluoro (1). Oud Metha: 1,326. Satellite US only: 37.</div>
     </div>
     <div class="card">
       <div class="card-title"><span class="dot" style="background:var(--accent3)"></span>Ultrasound Section Variability — Radar</div>
@@ -449,7 +484,7 @@ footer{border-top:1px solid var(--border);padding:16px 0;margin-top:32px;display
 
     <div class="grid2">
       <div class="card">
-        <div class="card-title">Daily Volume — Main vs Satellite <span class="tag">Mar 1–11</span></div>
+        <div class="card-title">Daily Volume — Main vs Satellite <span class="tag">Mar 1–16</span></div>
         <canvas id="dailyCompChart" height="220"></canvas>
         <div class="insight blue">📈 AHD Main data available Mar 9–16 only (3 full days: ~4,000/day). Satellite data spans full 11 days. The 2× TAT gap (90 vs 182 min) is consistent regardless of day.</div>
       </div>
@@ -466,7 +501,7 @@ footer{border-top:1px solid var(--border);padding:16px 0;margin-top:32px;display
     </div>
 
     <div class="card">
-      <div class="card-title">Satellite Clinic Daily Volume <span class="tag">Mar 1–11 full trend</span></div>
+      <div class="card-title">Satellite Clinic Daily Volume <span class="tag">Mar 1–16 full trend</span></div>
       <canvas id="satTrendChart" height="180"></canvas>
     </div>
   </div></div>
@@ -484,7 +519,7 @@ footer{border-top:1px solid var(--border);padding:16px 0;margin-top:32px;display
     <div class="grid2">
       <div class="card">
         <div class="card-title">Encounter Type Distribution <span class="tag">all AHD</span></div>
-        <canvas id="encPieChart" height="260"></canvas>
+        <canvas id="encPieChart" height="240"></canvas>
       </div>
       <div class="card">
         <div class="card-title">Tests per Encounter Type — AHD Main <span class="tag">volume bars</span></div>
@@ -538,7 +573,7 @@ footer{border-top:1px solid var(--border);padding:16px 0;margin-top:32px;display
       </div>
       <div class="card">
         <div class="card-title">Specialty Mix <span class="tag">by test orders</span></div>
-        <canvas id="specDonut" height="300"></canvas>
+        <div style="max-height:260px"><canvas id="specDonut" height="260"></canvas></div>
       </div>
     </div>
     <div class="card">
@@ -562,7 +597,7 @@ footer{border-top:1px solid var(--border);padding:16px 0;margin-top:32px;display
     <div class="grid2">
       <div class="card">
         <div class="card-title">Test Subtype Distribution <span class="tag">all AHD</span></div>
-        <canvas id="subtypePie" height="260"></canvas>
+        <canvas id="subtypePie" height="240"></canvas>
       </div>
       <div class="card">
         <div class="card-title">Main vs Satellite — Subtype Profile <span class="tag">normalized %</span></div>
@@ -593,7 +628,7 @@ footer{border-top:1px solid var(--border);padding:16px 0;margin-top:32px;display
 
 <script>
 const ACCENT='#00b4ff',A2='#00ffc8',A3='#ff6b35',A4='#c084fc',WARN='#ffbb35',DOWN='#ff4d6d';
-Chart.defaults.color='#6b8aaa';
+Chart.defaults.color='#9bb8d8';
 Chart.defaults.borderColor='rgba(0,180,255,0.08)';
 Chart.defaults.font.family="'DM Mono',monospace";
 Chart.defaults.font.size=12;
@@ -602,9 +637,9 @@ function pct(a,b){return ((b-a)/a*100).toFixed(1);}
 
 // Mod Table
 const modData=[
-  ['CT',1266,1203,380],['MRI',1419,1334,423],['Ultrasound',3226,3058,1040],
-  ['X-Ray',4009,3850,1129],['Dexa',233,176,62],['Nuc Med',101,137,28],
-  ['PET-CT',108,92,30],['IR',401,400,163],['Fluoroscopy',53,37,45],['Total',10921,10372,3300]
+  ['CT',1266,1203,533],['MRI',1419,1334,580],['Ultrasound',3226,3058,1403],
+  ['X-Ray',4009,3850,1479],['Dexa',233,176,78],['Nuc Med',101,137,40],
+  ['PET-CT',108,92,42],['IR',401,400,217],['Fluoroscopy',53,37,66],['Total',10921,10372,4438]
 ];
 const tb=document.getElementById('modTableBody');
 modData.forEach(([k,j,f,m])=>{
@@ -628,7 +663,7 @@ function bars(id,data,maxV,c1,c2,lw){
 
 bars('xrayJanBars',{'Main AHD':2148,Ortho:758,DMC:159,JMC:150,AKC:129,MCS:166,NAD:144,DHCC:190,ABC:165},null,A4,'#7c3aed');
 bars('xrayFebBars',{'Main AHD':1977,Ortho:584,SP:362,DMC:138,JMC:121,AKC:105,MCS:154,NAD:133,DHCC:145,ABC:131},null,A2,'#0891b2');
-bars('marPaceBars',{'CT (11d)':380,'MRI (11d)':423,'US (11d)':1040,'X-Ray (11d)':1129,'IR (11d)':163,'Fluoro (11d)':45},1200,A3,WARN,'120px');
+bars('marPaceBars',{'CT':533,'MRI':580,'US':1403,'X-Ray':1479,'IR':217,'Dexa':78,'Nuc Med':40,'PET-CT':42,'Fluoro':66},1600,A3,WARN,'90px');
 bars('satXrayJan',{DMC:159,JMC:150,AKC:129,MCS:166,NAD:144,DHCC:190,ABC:165},400,A3,WARN,'80px');
 bars('satXrayFeb',{DMC:138,JMC:121,AKC:105,MCS:154,NAD:133,DHCC:145,ABC:131,SP:362},400,A2,'#0891b2','80px');
 bars('labJanClientBars',{'AHD Main':145880,'Al Barsha':11071,'Dubai MC':5763,'Al Khawaneej':5138,'Nad Al Sheba':4747,'Mira':4589,'Jumeirah':4514,'Dubai Hills':3873},null,ACCENT,A2,'130px');
@@ -655,7 +690,7 @@ new Chart(document.getElementById('chartDailyTrend'),{
 new Chart(document.getElementById('chartModalityPie'),{
   type:'doughnut',
   data:{labels:['CT','MRI','Ultrasound','X-Ray','IR','Dexa','Nuc Med','PET-CT','Fluoro'],datasets:[{data:[1203,1334,3058,3850,400,176,137,92,37],backgroundColor:[ACCENT,'#00e8b5',A3,A4,WARN,DOWN,'#38bdf8','#818cf8','#6b8aaa'],borderWidth:0,hoverOffset:8}]},
-  options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{boxWidth:10,padding:8,font:{size:10}}},tooltip:{callbacks:{label:ctx=>` ${ctx.label}: ${ctx.raw.toLocaleString()} (${(ctx.raw/10372*100).toFixed(1)}%)`}}},cutout:'65%'}
+  options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{boxWidth:12,padding:8,font:{size:11},color:'#9bb8d8'}},tooltip:{callbacks:{label:ctx=>` ${ctx.label}: ${ctx.raw.toLocaleString()} (${(ctx.raw/10372*100).toFixed(1)}%)`}}},cutout:'52%'}
 });
 
 // Lab type
@@ -668,7 +703,7 @@ new Chart(document.getElementById('chartLabType'),{
 // Modality bar
 new Chart(document.getElementById('chartModalityBar'),{
   type:'bar',
-  data:{labels:['CT','MRI','US','X-Ray','IR','Dexa','NucMed','PET-CT'],datasets:[{label:'Jan',data:[1266,1419,3226,4009,401,233,101,108],backgroundColor:'rgba(0,180,255,0.65)',borderRadius:4},{label:'Feb',data:[1203,1334,3058,3850,400,176,137,92],backgroundColor:'rgba(0,255,200,0.65)',borderRadius:4},{label:'Mar 1-16',data:[380,423,1040,1129,163,62,28,30],backgroundColor:'rgba(255,107,53,0.65)',borderRadius:4}]},
+  data:{labels:['CT','MRI','US','X-Ray','IR','Dexa','NucMed','PET-CT'],datasets:[{label:'Jan',data:[1266,1419,3226,4009,401,233,101,108],backgroundColor:'rgba(0,180,255,0.65)',borderRadius:4},{label:'Feb',data:[1203,1334,3058,3850,400,176,137,92],backgroundColor:'rgba(0,255,200,0.65)',borderRadius:4},{label:'Mar 1-16',data:[533,580,1403,1479,217,78,40,42],backgroundColor:'rgba(255,107,53,0.65)',borderRadius:4}]},
   options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,position:'top',labels:{boxWidth:10}}},scales:{x:{grid:{display:false}},y:{beginAtZero:true}}}
 });
 
@@ -683,13 +718,13 @@ new Chart(document.getElementById('chartUSSections'),{
 new Chart(document.getElementById('chartSpecialty'),{
   type:'line',
   data:{labels:['Jan','Feb','Mar 1-16'],datasets:[
-    {label:'Dexa',data:[233,176,62],borderColor:A4,backgroundColor:'transparent',tension:0.4,pointRadius:5},
-    {label:'Nuc Med',data:[101,137,28],borderColor:A2,backgroundColor:'transparent',tension:0.4,pointRadius:5},
-    {label:'PET-CT',data:[108,92,30],borderColor:WARN,backgroundColor:'transparent',tension:0.4,pointRadius:5},
-    {label:'IR',data:[401,400,163],borderColor:A3,backgroundColor:'transparent',tension:0.4,pointRadius:5},
-    {label:'Fluoro',data:[53,37,45],borderColor:ACCENT,backgroundColor:'transparent',tension:0.4,pointRadius:5}
+    {label:'Dexa',data:[233,176,78],borderColor:A4,backgroundColor:'transparent',tension:0.4,pointRadius:5},
+    {label:'Nuc Med',data:[101,137,40],borderColor:A2,backgroundColor:'transparent',tension:0.4,pointRadius:5},
+    {label:'PET-CT',data:[108,92,42],borderColor:WARN,backgroundColor:'transparent',tension:0.4,pointRadius:5},
+    {label:'IR',data:[401,400,217],borderColor:A3,backgroundColor:'transparent',tension:0.4,pointRadius:5},
+    {label:'Fluoro',data:[53,37,66],borderColor:ACCENT,backgroundColor:'transparent',tension:0.4,pointRadius:5}
   ]},
-  options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{boxWidth:10,padding:8,font:{size:10}}}},scales:{x:{grid:{display:false}},y:{beginAtZero:true}}}
+  options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{boxWidth:10,padding:8,font:{size:10,color:'#9bb8d8'},color:'#9bb8d8'}}},scales:{x:{grid:{display:false}},y:{beginAtZero:true}}}
 });
 
 // Lab subtype
@@ -703,7 +738,7 @@ new Chart(document.getElementById('chartLabSubtype'),{
 new Chart(document.getElementById('chartLabDept'),{
   type:'doughnut',
   data:{labels:['General Lab','Micro','Anat Path','Blood Bank'],datasets:[{data:[180452,3239,1498,1235],backgroundColor:[ACCENT,'#00e8b5',A3,A4],borderWidth:0,hoverOffset:6}]},
-  options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{boxWidth:10,padding:8,font:{size:10}}},tooltip:{callbacks:{label:ctx=>` ${ctx.label}: ${ctx.raw.toLocaleString()}`}}},cutout:'60%'}
+  options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{boxWidth:12,padding:10,font:{size:12},color:'#9bb8d8'}},tooltip:{callbacks:{label:ctx=>` ${ctx.label}: ${ctx.raw.toLocaleString()}`}}},cutout:'52%'}
 });
 
 // Client change bar
@@ -721,14 +756,14 @@ new Chart(document.getElementById('chartClientChange'),{
 new Chart(document.getElementById('chartSitePie'),{
   type:'doughnut',
   data:{labels:['Oud Metha','Science Park'],datasets:[{data:[9351,1021],backgroundColor:[ACCENT,A3],borderWidth:0,hoverOffset:8}]},
-  options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{boxWidth:12}},tooltip:{callbacks:{label:ctx=>` ${ctx.label}: ${ctx.raw.toLocaleString()} (${(ctx.raw/10372*100).toFixed(1)}%)`}}},cutout:'60%'}
+  options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{boxWidth:14,padding:12,font:{size:12},color:'#9bb8d8'}},tooltip:{callbacks:{label:ctx=>` ${ctx.label}: ${ctx.raw.toLocaleString()} (${(ctx.raw/10372*100).toFixed(1)}%)`}}},cutout:'52%'}
 });
 
 // US radar
 new Chart(document.getElementById('chartUSVariability'),{
   type:'radar',
   data:{labels:['Main','ER','Ortho','OBS/Gyne','Paeds','Endo','Surgical','Primary','Exec'],datasets:[{label:'Jan',data:[225,425,389,313,264,392,368,338,41],borderColor:ACCENT,backgroundColor:'rgba(0,180,255,0.1)',pointBackgroundColor:ACCENT,borderWidth:1.5,pointRadius:3},{label:'Feb',data:[260,391,334,267,239,329,293,307,41],borderColor:A2,backgroundColor:'rgba(0,255,200,0.1)',pointBackgroundColor:A2,borderWidth:1.5,pointRadius:3}]},
-  options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{boxWidth:10}}},scales:{r:{ticks:{display:false},grid:{color:'rgba(0,180,255,0.1)'},angleLines:{color:'rgba(0,180,255,0.1)'},pointLabels:{font:{size:10}}}}}
+  options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{boxWidth:12,font:{size:12},color:'#9bb8d8'}}},scales:{r:{ticks:{display:false},grid:{color:'rgba(0,180,255,0.1)'},angleLines:{color:'rgba(0,180,255,0.1)'},pointLabels:{font:{size:10}}}}}
 });
 
 // Sat change
@@ -762,7 +797,7 @@ function showPage(id,btn){
 // Full-dash charts inherit sat theme defaults (dark)
 // Tooltip override for full-dash charts (light bg):
 
-const TOOLTIP = { backgroundColor:'#fff', borderColor:'#e2ddd4', borderWidth:1, titleColor:'#1a1a2e', bodyColor:'#7f8c8d' };
+const TOOLTIP = { backgroundColor:'#0a1628', borderColor:'rgba(0,180,255,0.3)', borderWidth:1, titleColor:'#e8f4ff', bodyColor:'#9bb8d8', padding:10 };
 
 // ── DATA ────────────────────────────────────────────────────────────────────
 const SAT_CLINICS = ['Al Barsha','Dubai Media City','Al Khawaneej','Nad Al Sheba','Mira','Jumeirah','Dubai Hills'];
@@ -864,15 +899,21 @@ new Chart(document.getElementById('dailyCompChart'), {
       {label:'AHD Main (est.)',   data:[null,null,null,null,null,null,null,null,4179,4116,3949,4538,3517,3885,4314,3704], backgroundColor:'#1a5276', borderRadius:2}
     ]
   },
-  options:{responsive:true, plugins:{legend:{position:'bottom',labels:{boxWidth:10,padding:10}},tooltip:TOOLTIP},
-    scales:{x:{grid:{display:false},ticks:{font:{size:9}}},y:{grid:{color:'#e2ddd4'},ticks:{font:{size:9}},beginAtZero:true}}}
+  options:{responsive:true, plugins:{legend:{position:'bottom',labels:{font:{size:12},color:'#9bb8d8',boxWidth:12,padding:10}},tooltip:TOOLTIP},
+    scales:{x:{grid:{display:false},ticks:{font:{size:9}}},y:{grid:{color:'rgba(0,180,255,0.08)'},ticks:{font:{size:9}},beginAtZero:true}}}
 });
 
 // ── CHART: Split donut ───────────────────────────────────────────────────────
 new Chart(document.getElementById('splitDonut'), {
   type:'doughnut',
-  data:{labels:['AHD Main','Satellite Clinics'],datasets:[{data:[12244,10550],backgroundColor:['#1a5276','#c0392b'],borderColor:'#f5f2eb',borderWidth:3}]},
-  options:{responsive:true,plugins:{legend:{position:'bottom',labels:{boxWidth:12,padding:12}},tooltip:TOOLTIP}}
+  data:{labels:['AHD Main','Satellite Clinics'],datasets:[{data:[32202,15195],backgroundColor:['#00b4ff','#ff6b35'],borderColor:'rgba(0,180,255,0.2)',borderWidth:2}]},
+  options:{responsive:true,maintainAspectRatio:false,
+    plugins:{
+      legend:{position:'bottom',labels:{boxWidth:14,padding:14,font:{size:13},color:'#9bb8d8'}},
+      tooltip:{callbacks:{label:ctx=>' '+ctx.label+': '+ctx.raw.toLocaleString()+' ('+((ctx.raw/47397)*100).toFixed(1)+'%)'}}
+    },
+    cutout:'55%'
+  }
 });
 
 // ── DEPT BARS ────────────────────────────────────────────────────────────────
@@ -902,22 +943,28 @@ new Chart(document.getElementById('satTrendChart'), {
     }))
   },
   options:{responsive:true,interaction:{mode:'index',intersect:false},
-    plugins:{legend:{position:'bottom',labels:{boxWidth:10,padding:8,font:{size:9}}},tooltip:TOOLTIP},
-    scales:{x:{grid:{display:false},ticks:{font:{size:9}}},y:{grid:{color:'#e2ddd4'},ticks:{font:{size:9}},beginAtZero:true}}}
+    plugins:{legend:{position:'bottom',labels:{boxWidth:10,padding:8,font:{size:9,color:'#9bb8d8'},color:'#9bb8d8'}},tooltip:TOOLTIP},
+    scales:{x:{grid:{display:false},ticks:{font:{size:9}}},y:{grid:{color:'rgba(0,180,255,0.08)'},ticks:{font:{size:9}},beginAtZero:true}}}
 });
 
 // ── CHART: Encounter pie ─────────────────────────────────────────────────────
 new Chart(document.getElementById('encPieChart'), {
   type:'doughnut',
-  data:{labels:ENC_TYPES,datasets:[{data:ENC_VALS,backgroundColor:ENC_COLS,borderColor:'#f5f2eb',borderWidth:3}]},
-  options:{responsive:true,plugins:{legend:{position:'right',labels:{boxWidth:12,padding:8,font:{size:10}}},tooltip:TOOLTIP}}
+  data:{labels:ENC_TYPES,datasets:[{data:ENC_VALS,backgroundColor:ENC_COLS,borderColor:'rgba(0,180,255,0.2)',borderWidth:2}]},
+  options:{responsive:true,maintainAspectRatio:false,
+    plugins:{
+      legend:{position:'bottom',labels:{boxWidth:12,padding:10,font:{size:12},color:'#9bb8d8'}},
+      tooltip:TOOLTIP
+    },
+    cutout:'50%'
+  }
 });
 
 new Chart(document.getElementById('encBarChart'), {
   type:'bar',
   data:{labels:ENC_TYPES,datasets:[{data:ENC_VALS,backgroundColor:ENC_COLS,borderRadius:2}]},
   options:{responsive:true,plugins:{legend:{display:false},tooltip:TOOLTIP},
-    scales:{x:{grid:{display:false},ticks:{font:{size:9}}},y:{grid:{color:'#e2ddd4'},ticks:{font:{size:9}},beginAtZero:true}}}
+    scales:{x:{grid:{display:false},ticks:{font:{size:9}}},y:{grid:{color:'rgba(0,180,255,0.08)'},ticks:{font:{size:9}},beginAtZero:true}}}
 });
 
 // Encounter test grids
@@ -961,8 +1008,8 @@ new Chart(document.getElementById('tatTrendChart'), {
       borderWidth:2, pointRadius:5, pointHoverRadius:8, tension:.3
     }))
   },
-  options:{responsive:true,plugins:{legend:{position:'bottom',labels:{boxWidth:10,padding:8,font:{size:9}}},tooltip:TOOLTIP},
-    scales:{x:{grid:{display:false}},y:{grid:{color:'#e2ddd4'},min:80,max:260,title:{display:true,text:'Minutes'}}}}
+  options:{responsive:true,plugins:{legend:{position:'bottom',labels:{boxWidth:10,padding:8,font:{size:9,color:'#9bb8d8'},color:'#9bb8d8'}},tooltip:TOOLTIP},
+    scales:{x:{grid:{display:false}},y:{grid:{color:'rgba(0,180,255,0.08)'},min:80,max:260,title:{display:true,text:'Minutes'}}}}
 });
 
 // ── SAT TAT bars Mar 11 ───────────────────────────────────────────────────────
@@ -989,7 +1036,7 @@ new Chart(document.getElementById('docBarChart'), {
     datasets:[{data:DOCS.map(d=>d.count),backgroundColor:DOCS.map(d=>typeCol[d.type]+'cc'),borderRadius:2}]
   },
   options:{indexAxis:'y',responsive:true,plugins:{legend:{display:false},tooltip:TOOLTIP},
-    scales:{x:{grid:{color:'#e2ddd4'},ticks:{font:{size:9}}},y:{grid:{display:false},ticks:{font:{size:9}}}}}
+    scales:{x:{grid:{color:'rgba(0,180,255,0.08)'},ticks:{font:{size:9}}},y:{grid:{display:false},ticks:{font:{size:9}}}}}
 });
 
 // ── CHART: Specialty donut ───────────────────────────────────────────────────
@@ -999,7 +1046,7 @@ new Chart(document.getElementById('specDonut'), {
     datasets:[{data:[3890,1400,1200,920,780,600,400,604],
       backgroundColor:['#c0392b','#1a5276','#117a65','#d4840a','#6c3483','#17a589','#784212','#7f8c8d'],
       borderColor:'#f5f2eb',borderWidth:3}]},
-  options:{responsive:true,plugins:{legend:{position:'right',labels:{boxWidth:10,padding:6,font:{size:9}}},tooltip:TOOLTIP}}
+  options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{boxWidth:12,padding:8,font:{size:12},color:'#9bb8d8'}},tooltip:{callbacks:{label:ctx=>' '+ctx.label+': '+ctx.raw.toLocaleString()}}},cutout:'50%'}
 });
 
 // ── PHYSICIAN CARDS ──────────────────────────────────────────────────────────
@@ -1022,8 +1069,14 @@ DOCS.forEach(d => {
 // ── CHART: Subtype pie ───────────────────────────────────────────────────────
 new Chart(document.getElementById('subtypePie'), {
   type:'doughnut',
-  data:{labels:SUBTYPES,datasets:[{data:[17752,1319,1185,1231,190,153,289,76,599],backgroundColor:SUB_COLS,borderColor:'#f5f2eb',borderWidth:2}]},
-  options:{responsive:true,plugins:{legend:{position:'right',labels:{boxWidth:10,padding:6,font:{size:10}}},tooltip:TOOLTIP}}
+  data:{labels:SUBTYPES,datasets:[{data:[17752,1319,1185,1231,190,153,289,76,599],backgroundColor:SUB_COLS,borderColor:'rgba(0,180,255,0.15)',borderWidth:2}]},
+  options:{responsive:true,maintainAspectRatio:false,
+    plugins:{
+      legend:{position:'bottom',labels:{boxWidth:12,padding:10,font:{size:12},color:'#9bb8d8'}},
+      tooltip:{callbacks:{label:ctx=>' '+ctx.label+': '+ctx.raw.toLocaleString()+' ('+((ctx.raw/22794)*100).toFixed(1)+'%)'}}
+    },
+    cutout:'52%'
+  }
 });
 
 // ── CHART: Subtype comparison ────────────────────────────────────────────────
@@ -1035,8 +1088,8 @@ new Chart(document.getElementById('subtypeCompare'), {
     {label:'AHD Main %', data:SUB_MAIN.map(v=>+(v/mainTotal*100).toFixed(1)), backgroundColor:'#1a527680', borderRadius:2},
     {label:'Satellite %', data:SUB_SAT.map(v=>+(v/satTotal*100).toFixed(1)), backgroundColor:'#c0392b80', borderRadius:2}
   ]},
-  options:{responsive:true,plugins:{legend:{position:'bottom',labels:{boxWidth:10,padding:10}},tooltip:TOOLTIP},
-    scales:{x:{grid:{display:false},ticks:{font:{size:8}}},y:{grid:{color:'#e2ddd4'},ticks:{font:{size:9},callback:v=>v+'%'}}}}
+  options:{responsive:true,plugins:{legend:{position:'bottom',labels:{font:{size:12},color:'#9bb8d8',boxWidth:12,padding:10}},tooltip:TOOLTIP},
+    scales:{x:{grid:{display:false},ticks:{font:{size:8}}},y:{grid:{color:'rgba(0,180,255,0.08)'},ticks:{font:{size:9},callback:v=>v+'%'}}}}
 });
 
 // ── CHART: Top tests main ─────────────────────────────────────────────────────
@@ -1044,7 +1097,7 @@ new Chart(document.getElementById('testsMainChart'), {
   type:'bar',
   data:{labels:TESTS_MAIN_LABELS,datasets:[{data:TESTS_MAIN_VALS,backgroundColor:TESTS_MAIN_VALS.map((_,i)=>i<3?'#1a5276':'#1a527640'),borderRadius:2}]},
   options:{indexAxis:'y',responsive:true,plugins:{legend:{display:false},tooltip:TOOLTIP},
-    scales:{x:{grid:{color:'#e2ddd4'},ticks:{font:{size:9}}},y:{grid:{display:false},ticks:{font:{size:9}}}}}
+    scales:{x:{grid:{color:'rgba(0,180,255,0.08)'},ticks:{font:{size:9}}},y:{grid:{display:false},ticks:{font:{size:9}}}}}
 });
 
 // ── CHART: Top tests sat ──────────────────────────────────────────────────────
@@ -1052,7 +1105,7 @@ new Chart(document.getElementById('testsSatChart'), {
   type:'bar',
   data:{labels:TESTS_SAT_LABELS,datasets:[{data:TESTS_SAT_VALS,backgroundColor:TESTS_SAT_VALS.map((_,i)=>i<3?'#c0392b':'#c0392b40'),borderRadius:2}]},
   options:{indexAxis:'y',responsive:true,plugins:{legend:{display:false},tooltip:TOOLTIP},
-    scales:{x:{grid:{color:'#e2ddd4'},ticks:{font:{size:9}}},y:{grid:{display:false},ticks:{font:{size:9}}}}}
+    scales:{x:{grid:{color:'rgba(0,180,255,0.08)'},ticks:{font:{size:9}}},y:{grid:{display:false},ticks:{font:{size:9}}}}}
 });
 
 // ── CHART: POC compare ───────────────────────────────────────────────────────
@@ -1062,8 +1115,8 @@ new Chart(document.getElementById('pocCompareChart'), {
     {label:'AHD Main',    data:POC_MAIN, backgroundColor:'#1a527680', borderRadius:2},
     {label:'Satellite',   data:POC_SAT,  backgroundColor:'#c0392b80', borderRadius:2}
   ]},
-  options:{responsive:true,plugins:{legend:{position:'bottom',labels:{boxWidth:10,padding:10}},tooltip:TOOLTIP},
-    scales:{x:{grid:{display:false},ticks:{font:{size:9}}},y:{grid:{color:'#e2ddd4'},ticks:{font:{size:9}},beginAtZero:true}}}
+  options:{responsive:true,plugins:{legend:{position:'bottom',labels:{font:{size:12},color:'#9bb8d8',boxWidth:12,padding:10}},tooltip:TOOLTIP},
+    scales:{x:{grid:{display:false},ticks:{font:{size:9}}},y:{grid:{color:'rgba(0,180,255,0.08)'},ticks:{font:{size:9}},beginAtZero:true}}}
 });
 
 // Tab switching handled by showPage()
