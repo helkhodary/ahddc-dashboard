@@ -2,157 +2,383 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
+<meta name="theme-color" content="#080f1a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="format-detection" content="telephone=no">
 <title>AHD Diagnostic Center — March 2026 Deep Analytics</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
+/* ─── DESIGN TOKENS ─────────────────────────────────────────── */
 :root {
   --bg:#080f1a; --surface:#0d1a2e; --surface2:#122038; --surface3:#172843;
   --border:rgba(0,190,255,0.1); --border2:rgba(0,190,255,0.2);
   --accent:#00beff; --accent2:#00ffb3; --accent3:#ff6b2b; --accent4:#c77dff;
   --warn:#ffb703; --danger:#ff3860; --ok:#06d6a0;
   --text:#e8f4ff; --text2:#8fb8d8; --text3:#4a7a9b;
-  --font:'Space Grotesk',sans-serif; --mono:'JetBrains Mono',monospace;
+  --font:'Space Grotesk',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  --mono:'JetBrains Mono','Cascadia Code','Fira Code',monospace;
+  --radius:10px; --radius-sm:6px; --radius-lg:14px;
+  --shadow:0 4px 24px rgba(0,0,0,0.4);
+  --nav-h:48px;
+  --touch-min:44px;
 }
-*{box-sizing:border-box;margin:0;padding:0}
-html{scroll-behavior:smooth}
-body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:14px;line-height:1.5;overflow-x:hidden}
 
-/* NOISE OVERLAY */
-body::before{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");pointer-events:none;z-index:0;opacity:0.4}
+/* ─── RESET ──────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+html { scroll-behavior:smooth; -webkit-text-size-adjust:100%; text-size-adjust:100%; }
+body {
+  background:var(--bg); color:var(--text);
+  font-family:var(--font); font-size:15px; line-height:1.55;
+  overflow-x:hidden; -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
+}
 
-/* GRADIENT BG */
-body::after{content:'';position:fixed;inset:0;background:radial-gradient(ellipse 80% 50% at 20% 0%,rgba(0,80,150,0.15) 0%,transparent 60%),radial-gradient(ellipse 60% 40% at 80% 100%,rgba(0,120,80,0.1) 0%,transparent 50%);pointer-events:none;z-index:0}
+/* ─── NOISE + GRADIENT BG ────────────────────────────────────── */
+body::before {
+  content:''; position:fixed; inset:0; pointer-events:none; z-index:0;
+  opacity:.3;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+}
+body::after {
+  content:''; position:fixed; inset:0; pointer-events:none; z-index:0;
+  background:
+    radial-gradient(ellipse 80% 50% at 20% 0%,rgba(0,80,150,.15) 0%,transparent 60%),
+    radial-gradient(ellipse 60% 40% at 80% 100%,rgba(0,120,80,.1) 0%,transparent 50%);
+}
 
-.wrap{position:relative;z-index:1;max-width:1600px;margin:0 auto;padding:0 24px}
+/* ─── LAYOUT ─────────────────────────────────────────────────── */
+.wrap { position:relative; z-index:1; max-width:1600px; margin:0 auto; padding:0 max(20px,env(safe-area-inset-left,20px)); }
 
-/* HEADER */
-header{border-bottom:1px solid var(--border);padding:20px 0 16px;margin-bottom:0}
-.header-row{display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:16px}
-.logo-group{}
-.logo-tag{font-size:10px;letter-spacing:3px;text-transform:uppercase;color:var(--accent);margin-bottom:6px;font-family:var(--mono)}
-h1.title{font-size:clamp(18px,3vw,28px);font-weight:700;letter-spacing:-0.5px;color:var(--text)}
-h1.title span{color:var(--accent)}
-.subtitle{font-family:var(--mono);font-size:11px;color:var(--text3);margin-top:4px}
-.header-pills{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-.pill{padding:5px 14px;border:1px solid var(--border2);border-radius:20px;font-family:var(--mono);font-size:11px;color:var(--accent);background:rgba(0,190,255,0.05)}
-.pill.warn{color:var(--warn);border-color:rgba(255,183,3,0.3);background:rgba(255,183,3,0.05)}
-.pill.ok{color:var(--ok);border-color:rgba(6,214,160,0.3);background:rgba(6,214,160,0.05)}
+/* ─── HEADER ─────────────────────────────────────────────────── */
+header { border-bottom:1px solid var(--border); padding:18px 0 14px; }
+.header-row {
+  display:-webkit-box; display:-webkit-flex; display:flex;
+  -webkit-box-align:start; -webkit-align-items:flex-start; align-items:flex-start;
+  -webkit-box-pack:justify; -webkit-justify-content:space-between; justify-content:space-between;
+  -webkit-flex-wrap:wrap; flex-wrap:wrap; gap:14px;
+}
+.logo-tag { font-size:10px; letter-spacing:3px; text-transform:uppercase; color:var(--accent); margin-bottom:5px; font-family:var(--mono); }
+h1.title { font-size:clamp(18px,4vw,28px); font-weight:700; letter-spacing:-.5px; }
+h1.title span { color:var(--accent); }
+.subtitle { font-family:var(--mono); font-size:11px; color:var(--text3); margin-top:3px; }
+.header-pills {
+  display:-webkit-box; display:-webkit-flex; display:flex;
+  -webkit-flex-wrap:wrap; flex-wrap:wrap; gap:6px; -webkit-box-align:center; align-items:center;
+}
+.pill {
+  padding:4px 12px; border:1px solid var(--border2); border-radius:20px;
+  font-family:var(--mono); font-size:11px; color:var(--accent);
+  background:rgba(0,190,255,.05); white-space:nowrap;
+}
+.pill.warn { color:var(--warn); border-color:rgba(255,183,3,.3); background:rgba(255,183,3,.05); }
+.pill.ok   { color:var(--ok);   border-color:rgba(6,214,160,.3); background:rgba(6,214,160,.05); }
 
-/* NAV TABS */
-.nav{position:sticky;top:0;z-index:100;background:rgba(8,15,26,0.95);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:0}
-.nav-inner{display:flex;gap:0;overflow-x:auto;scrollbar-width:none}
-.nav-inner::-webkit-scrollbar{display:none}
-.tab-btn{padding:14px 20px;font-family:var(--font);font-size:12px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;color:var(--text3);background:none;border:none;border-bottom:2px solid transparent;cursor:pointer;white-space:nowrap;transition:all .2s;flex-shrink:0}
-.tab-btn:hover{color:var(--text)}
-.tab-btn.active{color:var(--accent);border-bottom-color:var(--accent)}
-.tab-panel{display:none;padding:24px 0 40px}
-.tab-panel.active{display:block}
+/* ─── NAV ────────────────────────────────────────────────────── */
+.nav {
+  position:-webkit-sticky; position:sticky; top:0; z-index:200;
+  will-change:transform;
+  background:rgba(8,15,26,.96);
+  -webkit-backdrop-filter:blur(16px) saturate(180%);
+  backdrop-filter:blur(16px) saturate(180%);
+  border-bottom:1px solid var(--border);
+}
+/* @supports fallback for browsers without backdrop-filter */
+@supports not (backdrop-filter:blur(1px)) {
+  .nav { background:rgba(8,15,26,.99); }
+}
+.nav-inner {
+  display:-webkit-box; display:-webkit-flex; display:flex;
+  gap:0; overflow-x:auto; -webkit-overflow-scrolling:touch;
+  scrollbar-width:none; -ms-overflow-style:none;
+}
+.nav-inner::-webkit-scrollbar { display:none; }
+.tab-btn {
+  padding:0 18px; height:var(--touch-min); min-height:var(--touch-min);
+  font-family:var(--font); font-size:11px; font-weight:600;
+  letter-spacing:.6px; text-transform:uppercase; color:var(--text3);
+  background:none; border:none; border-bottom:2px solid transparent;
+  cursor:pointer; white-space:nowrap;
+  -webkit-transition:all .2s; transition:all .2s; -webkit-flex-shrink:0; flex-shrink:0;
+  -webkit-tap-highlight-color:transparent; touch-action:manipulation;
+  -webkit-appearance:none; appearance:none;
+}
+.tab-btn:hover { color:var(--text2); }
+.tab-btn.active { color:var(--accent); border-bottom-color:var(--accent); }
+.tab-btn:focus-visible { outline:2px solid var(--accent); outline-offset:-2px; }
+.tab-panel { display:none; padding:22px 0 48px; }
+.tab-panel.active { display:block; }
 
-/* KPI STRIP */
-.kpi-strip{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-bottom:24px}
-.kpi{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;position:relative;overflow:hidden}
-.kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--kc,var(--accent))}
-.kpi-label{font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:1.5px;color:var(--text3);margin-bottom:8px}
-.kpi-value{font-size:clamp(18px,3vw,26px);font-weight:700;letter-spacing:-0.5px;color:var(--kc,var(--accent));line-height:1}
-.kpi-sub{font-family:var(--mono);font-size:10px;color:var(--text3);margin-top:5px}
+/* ─── KPI STRIP ──────────────────────────────────────────────── */
+.kpi-strip {
+  display:-webkit-box; display:-webkit-flex; display:flex;
+  -webkit-flex-wrap:wrap; flex-wrap:wrap; gap:10px; margin-bottom:20px;
+}
+.kpi {
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:var(--radius); padding:14px 16px;
+  position:relative; overflow:hidden;
+  -webkit-box-flex:1; -webkit-flex:1 1 150px; flex:1 1 150px;
+  min-width:130px;
+}
+.kpi::before {
+  content:''; position:absolute; top:0; left:0; right:0; height:2px;
+  background:var(--kc,var(--accent));
+}
+.kpi-label { font-family:var(--mono); font-size:9px; text-transform:uppercase; letter-spacing:1.5px; color:var(--text3); margin-bottom:7px; }
+.kpi-value { font-size:clamp(17px,2.5vw,26px); font-weight:700; letter-spacing:-.5px; color:var(--kc,var(--accent)); line-height:1; }
+.kpi-sub { font-family:var(--mono); font-size:10px; color:var(--text3); margin-top:5px; }
 .kpi.blue{--kc:var(--accent)} .kpi.green{--kc:var(--accent2)} .kpi.orange{--kc:var(--accent3)}
 .kpi.purple{--kc:var(--accent4)} .kpi.yellow{--kc:var(--warn)} .kpi.red{--kc:var(--danger)} .kpi.teal{--kc:var(--ok)}
 
-/* GRID */
-.g2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
-.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:16px}
-.g21{display:grid;grid-template-columns:2fr 1fr;gap:16px;margin-bottom:16px}
-.g12{display:grid;grid-template-columns:1fr 2fr;gap:16px;margin-bottom:16px}
-.g13{display:grid;grid-template-columns:1fr 3fr;gap:16px;margin-bottom:16px}
-.mb{margin-bottom:16px}
+/* ─── GRID ───────────────────────────────────────────────────── */
+.g2  { display:-webkit-box; display:-webkit-flex; display:flex; -webkit-flex-wrap:wrap; flex-wrap:wrap; gap:14px; margin-bottom:14px; }
+.g3  { display:-webkit-box; display:-webkit-flex; display:flex; -webkit-flex-wrap:wrap; flex-wrap:wrap; gap:14px; margin-bottom:14px; }
+.g21 { display:-webkit-box; display:-webkit-flex; display:flex; -webkit-flex-wrap:wrap; flex-wrap:wrap; gap:14px; margin-bottom:14px; }
+.g12 { display:-webkit-box; display:-webkit-flex; display:flex; -webkit-flex-wrap:wrap; flex-wrap:wrap; gap:14px; margin-bottom:14px; }
+.g13 { display:-webkit-box; display:-webkit-flex; display:flex; -webkit-flex-wrap:wrap; flex-wrap:wrap; gap:14px; margin-bottom:14px; }
+/* Column sizing via min-width on children */
+.g2  > * { -webkit-box-flex:1; -webkit-flex:1 1 320px; flex:1 1 320px; min-width:0; }
+.g3  > * { -webkit-box-flex:1; -webkit-flex:1 1 260px; flex:1 1 260px; min-width:0; }
+.g21 > *:first-child { -webkit-box-flex:2; -webkit-flex:2 1 420px; flex:2 1 420px; min-width:0; }
+.g21 > *:last-child  { -webkit-box-flex:1; -webkit-flex:1 1 260px; flex:1 1 260px; min-width:0; }
+.g12 > *:first-child { -webkit-box-flex:1; -webkit-flex:1 1 220px; flex:1 1 220px; min-width:0; }
+.g12 > *:last-child  { -webkit-box-flex:2; -webkit-flex:2 1 420px; flex:2 1 420px; min-width:0; }
+.g13 > *:first-child { -webkit-box-flex:1; -webkit-flex:1 1 180px; flex:1 1 180px; min-width:0; }
+.g13 > *:last-child  { -webkit-box-flex:3; -webkit-flex:3 1 480px; flex:3 1 480px; min-width:0; }
+.mb { margin-bottom:14px; }
 
-/* CARD */
-.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px}
-.card-head{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid var(--border);gap:8px;flex-wrap:wrap}
-.card-title{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1.2px;color:var(--text2)}
-.card-tag{font-family:var(--mono);font-size:10px;color:var(--text3)}
-.chart-wrap{position:relative}
-
-/* INSIGHT BOX */
-.insight{border-left:3px solid var(--accent);padding:10px 14px;background:rgba(0,190,255,0.04);border-radius:0 6px 6px 0;margin-top:12px;font-size:12px;color:var(--text2);line-height:1.6}
-.insight.warn{border-left-color:var(--warn);background:rgba(255,183,3,0.04)}
-.insight.ok{border-left-color:var(--ok);background:rgba(6,214,160,0.04)}
-.insight.danger{border-left-color:var(--danger);background:rgba(255,56,96,0.04)}
-.insight strong{color:var(--text)}
-
-/* SECTION LABEL */
-.section-label{font-family:var(--mono);font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--accent);padding:12px 0 8px;border-bottom:1px solid var(--border);margin-bottom:16px}
-
-/* BAR ROWS */
-.bar-row{display:flex;align-items:center;gap:10px;margin-bottom:8px}
-.bar-lbl{font-size:11px;color:var(--text2);flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.bar-track{flex:1;height:6px;background:rgba(255,255,255,0.05);border-radius:3px;overflow:hidden}
-.bar-fill{height:100%;border-radius:3px}
-.bar-val{font-family:var(--mono);font-size:11px;color:var(--text3);text-align:right;flex-shrink:0}
-
-/* HEATMAP GRID */
-.heatmap{display:grid;gap:3px}
-.hm-cell{border-radius:3px;font-family:var(--mono);font-size:9px;display:flex;align-items:center;justify-content:center;cursor:default;transition:transform .15s}
-.hm-cell:hover{transform:scale(1.1)}
-.hm-labels{display:flex;gap:3px;margin-bottom:4px}
-.hm-lbl{font-family:var(--mono);font-size:9px;color:var(--text3);text-align:center;flex:1}
-
-/* CLINIC FILTER */
-.clinic-filter{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px}
-.cf-btn{padding:5px 12px;border:1px solid var(--border);border-radius:16px;font-size:11px;font-weight:500;color:var(--text3);background:none;cursor:pointer;transition:all .15s}
-.cf-btn:hover,.cf-btn.active{border-color:var(--accent);color:var(--accent);background:rgba(0,190,255,0.08)}
-
-/* DATA TABLE */
-.dtbl{width:100%;border-collapse:collapse}
-.dtbl th{font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:1px;color:var(--text3);text-align:left;padding:7px 8px;border-bottom:2px solid var(--border2)}
-.dtbl th.r{text-align:right}
-.dtbl td{padding:8px 8px;font-size:12px;border-bottom:1px solid rgba(0,190,255,0.04)}
-.dtbl td.r{text-align:right;font-family:var(--mono)}
-.dtbl tr:hover td{background:rgba(0,190,255,0.03)}
-.dtbl tr:last-child td{border-bottom:none}
-.badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:9px;font-weight:600;letter-spacing:.5px;text-transform:uppercase}
-.badge.red{background:rgba(255,56,96,0.15);color:#ff8080}
-.badge.warn{background:rgba(255,183,3,0.15);color:var(--warn)}
-.badge.ok{background:rgba(6,214,160,0.15);color:var(--ok)}
-.badge.blue{background:rgba(0,190,255,0.15);color:var(--accent)}
-
-/* TAT GAUGE */
-.tat-gauge{display:flex;align-items:center;gap:6px}
-.tat-bar-bg{flex:1;height:8px;background:rgba(255,255,255,0.06);border-radius:4px;overflow:hidden}
-.tat-bar-fill{height:8px;border-radius:4px}
-
-/* DONUT LEGEND */
-.donut-legend{display:flex;flex-direction:column;gap:6px;justify-content:center}
-.dl-row{display:flex;align-items:center;gap:8px}
-.dl-dot{width:10px;height:10px;border-radius:2px;flex-shrink:0}
-.dl-name{font-size:11px;color:var(--text2);flex:1}
-.dl-val{font-family:var(--mono);font-size:11px;color:var(--text3)}
-
-/* DAY SELECTOR (sparklines) */
-.day-tiles{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:16px}
-.day-tile{padding:4px 8px;border:1px solid var(--border);border-radius:6px;font-family:var(--mono);font-size:10px;color:var(--text3);cursor:pointer;transition:all .15s;text-align:center}
-.day-tile:hover,.day-tile.active{border-color:var(--accent);color:var(--accent);background:rgba(0,190,255,0.08)}
-
-/* PHYSICIAN CARDS */
-.phy-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px}
-.phy-card{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px}
-.phy-name{font-size:12px;font-weight:600;color:var(--text);margin-bottom:3px}
-.phy-spec{font-size:10px;color:var(--accent);font-family:var(--mono)}
-.phy-loc{font-size:10px;color:var(--text3);margin-top:2px}
-.phy-bar-bg{width:100%;height:3px;background:rgba(255,255,255,0.06);border-radius:2px;margin-top:8px}
-.phy-bar-fill{height:3px;border-radius:2px;background:linear-gradient(90deg,var(--accent),var(--accent2))}
-
-/* RESPONSIVE */
-@media(max-width:900px){
-  .g2,.g3,.g21,.g12,.g13{grid-template-columns:1fr}
-  .kpi-strip{grid-template-columns:repeat(2,1fr)}
+/* ─── CARD ───────────────────────────────────────────────────── */
+.card {
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:var(--radius-lg); padding:18px;
+  min-width:0; /* prevent flex overflow */
+  -webkit-box-shadow:var(--shadow); box-shadow:var(--shadow);
 }
-@media(max-width:500px){
-  .kpi-strip{grid-template-columns:repeat(2,1fr)}
-  .kpi-value{font-size:20px}
-  .wrap{padding:0 12px}
+.card-head {
+  display:-webkit-box; display:-webkit-flex; display:flex;
+  -webkit-box-align:baseline; align-items:baseline;
+  -webkit-box-pack:justify; justify-content:space-between;
+  margin-bottom:14px; padding-bottom:10px;
+  border-bottom:1px solid var(--border); gap:8px; -webkit-flex-wrap:wrap; flex-wrap:wrap;
+}
+.card-title { font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:1px; color:var(--text2); }
+.card-tag   { font-family:var(--mono); font-size:10px; color:var(--text3); }
+
+/* ─── CHART WRAP ─────────────────────────────────────────────── */
+.chart-wrap { position:relative; width:100%; }
+/* Chart heights: use aspect-ratio where supported, fallback to fixed */
+.chart-h-sm  { height:180px; }
+.chart-h-md  { height:220px; }
+.chart-h-lg  { height:260px; }
+.chart-h-xl  { height:320px; }
+canvas { display:block; max-width:100%; }
+
+/* ─── INSIGHT ────────────────────────────────────────────────── */
+.insight {
+  border-left:3px solid var(--accent); padding:10px 13px;
+  background:rgba(0,190,255,.04); border-radius:0 var(--radius-sm) var(--radius-sm) 0;
+  margin-top:12px; font-size:12px; color:var(--text2); line-height:1.6;
+}
+.insight.warn   { border-left-color:var(--warn);   background:rgba(255,183,3,.04); }
+.insight.ok     { border-left-color:var(--ok);     background:rgba(6,214,160,.04); }
+.insight.danger { border-left-color:var(--danger); background:rgba(255,56,96,.04); }
+.insight strong { color:var(--text); }
+
+/* ─── SECTION LABEL ──────────────────────────────────────────── */
+.section-label {
+  font-family:var(--mono); font-size:10px; letter-spacing:2px;
+  text-transform:uppercase; color:var(--accent);
+  padding:12px 0 8px; border-bottom:1px solid var(--border); margin-bottom:16px;
+}
+
+/* ─── BAR ROWS ───────────────────────────────────────────────── */
+.bar-row {
+  display:-webkit-box; display:-webkit-flex; display:flex;
+  -webkit-box-align:center; align-items:center; gap:8px; margin-bottom:8px;
+}
+.bar-lbl  { font-size:11px; color:var(--text2); -webkit-flex-shrink:0; flex-shrink:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.bar-track { -webkit-box-flex:1; flex:1; height:6px; background:rgba(255,255,255,.05); border-radius:3px; overflow:hidden; min-width:0; }
+.bar-fill  { height:100%; border-radius:3px; -webkit-transition:width .6s ease; transition:width .6s ease; }
+.bar-val   { font-family:var(--mono); font-size:11px; color:var(--text3); text-align:right; -webkit-flex-shrink:0; flex-shrink:0; }
+
+/* ─── CLINIC FILTER ──────────────────────────────────────────── */
+.clinic-filter {
+  display:-webkit-box; display:-webkit-flex; display:flex;
+  -webkit-flex-wrap:wrap; flex-wrap:wrap; gap:6px; margin-bottom:14px;
+}
+.cf-btn {
+  padding:7px 13px; border:1px solid var(--border); border-radius:16px;
+  font-size:12px; font-weight:500; color:var(--text3); background:none;
+  cursor:pointer; -webkit-transition:all .15s; transition:all .15s;
+  -webkit-tap-highlight-color:transparent; touch-action:manipulation;
+  min-height:36px; -webkit-appearance:none;
+}
+.cf-btn:hover, .cf-btn.active { border-color:var(--accent); color:var(--accent); background:rgba(0,190,255,.08); }
+
+/* ─── DATA TABLE ─────────────────────────────────────────────── */
+.tbl-wrap { overflow-x:auto; -webkit-overflow-scrolling:touch; }
+.dtbl { width:100%; border-collapse:collapse; min-width:480px; }
+.dtbl th {
+  font-family:var(--mono); font-size:9px; text-transform:uppercase;
+  letter-spacing:1px; color:var(--text3); text-align:left;
+  padding:8px; border-bottom:2px solid var(--border2); white-space:nowrap;
+}
+.dtbl th.r { text-align:right; }
+.dtbl td   { padding:9px 8px; font-size:12px; border-bottom:1px solid rgba(0,190,255,.04); vertical-align:middle; }
+.dtbl td.r { text-align:right; font-family:var(--mono); }
+.dtbl tr:hover td { background:rgba(0,190,255,.03); }
+.dtbl tr:last-child td { border-bottom:none; }
+.badge {
+  display:inline-block; padding:3px 8px; border-radius:10px;
+  font-size:9px; font-weight:700; letter-spacing:.5px; text-transform:uppercase; white-space:nowrap;
+}
+.badge.red  { background:rgba(255,56,96,.15);   color:#ff8080; }
+.badge.warn { background:rgba(255,183,3,.15);   color:var(--warn); }
+.badge.ok   { background:rgba(6,214,160,.15);   color:var(--ok); }
+.badge.blue { background:rgba(0,190,255,.15);   color:var(--accent); }
+
+/* ─── TAT GAUGE ──────────────────────────────────────────────── */
+.tat-bar-bg  { -webkit-box-flex:1; flex:1; height:8px; background:rgba(255,255,255,.06); border-radius:4px; overflow:hidden; }
+.tat-bar-fill{ height:8px; border-radius:4px; }
+
+/* ─── DONUT LEGEND ───────────────────────────────────────────── */
+.donut-legend { display:-webkit-box; display:-webkit-flex; display:flex; -webkit-flex-direction:column; flex-direction:column; gap:5px; justify-content:center; min-width:100px; }
+.dl-row  { display:-webkit-box; display:-webkit-flex; display:flex; -webkit-box-align:center; align-items:center; gap:7px; }
+.dl-dot  { width:10px; height:10px; border-radius:2px; -webkit-flex-shrink:0; flex-shrink:0; }
+.dl-name { font-size:11px; color:var(--text2); -webkit-box-flex:1; flex:1; }
+.dl-val  { font-family:var(--mono); font-size:11px; color:var(--text3); }
+
+/* ─── PHYSICIAN CARDS ────────────────────────────────────────── */
+.phy-grid {
+  display:-webkit-box; display:-webkit-flex; display:flex;
+  -webkit-flex-wrap:wrap; flex-wrap:wrap; gap:10px;
+}
+.phy-card {
+  background:var(--surface2); border:1px solid var(--border); border-radius:8px;
+  padding:12px; -webkit-box-flex:1; -webkit-flex:1 1 200px; flex:1 1 200px; min-width:0;
+}
+.phy-name   { font-size:12px; font-weight:600; color:var(--text); margin-bottom:3px; }
+.phy-spec   { font-size:10px; color:var(--accent); font-family:var(--mono); }
+.phy-loc    { font-size:10px; color:var(--text3); margin-top:2px; }
+.phy-bar-bg { width:100%; height:3px; background:rgba(255,255,255,.06); border-radius:2px; margin-top:8px; }
+.phy-bar-fill { height:3px; border-radius:2px; background:-webkit-linear-gradient(left,var(--accent),var(--accent2)); background:linear-gradient(90deg,var(--accent),var(--accent2)); }
+
+/* ─── HEATMAP ────────────────────────────────────────────────── */
+.hm-scroll { overflow-x:auto; -webkit-overflow-scrolling:touch; }
+
+/* ─── SCROLLABLE CONTAINERS ──────────────────────────────────── */
+.scroll-x { overflow-x:auto; -webkit-overflow-scrolling:touch; }
+
+/* ─── FOOTER ─────────────────────────────────────────────────── */
+footer { border-top:1px solid var(--border); padding:14px 0; margin-top:20px; }
+.footer-inner {
+  display:-webkit-box; display:-webkit-flex; display:flex;
+  -webkit-box-pack:justify; justify-content:space-between; -webkit-flex-wrap:wrap; flex-wrap:wrap;
+  gap:8px; font-family:var(--mono); font-size:10px; color:var(--text3);
+}
+
+/* ─── RESPONSIVENESS ─────────────────────────────────────────── */
+
+/* Tablet: 768px - 1023px */
+@media (max-width:1023px) {
+  :root { --nav-h:44px; }
+  .wrap { padding:0 16px; }
+  .tab-btn { font-size:10px; padding:0 14px; }
+  .kpi { -webkit-flex:1 1 140px; flex:1 1 140px; min-width:120px; }
+  .chart-h-xl { height:280px; }
+}
+
+/* Large mobile / small tablet: 600px - 767px */
+@media (max-width:767px) {
+  body { font-size:14px; }
+  .wrap { padding:0 12px; }
+  header { padding:14px 0 10px; }
+  h1.title { font-size:clamp(16px,5vw,22px); }
+  .pill { font-size:10px; padding:3px 9px; }
+  .logo-tag { font-size:9px; letter-spacing:2px; }
+  .subtitle { display:none; }
+  /* Force single column on all grids */
+  .g2 > *, .g3 > *, .g21 > *, .g12 > *, .g13 > * {
+    -webkit-flex:1 1 100% !important; flex:1 1 100% !important;
+  }
+  .kpi-strip { gap:8px; }
+  .kpi { -webkit-flex:1 1 calc(50% - 4px); flex:1 1 calc(50% - 4px); min-width:130px; padding:12px; }
+  .kpi-label { font-size:8.5px; }
+  .kpi-value { font-size:20px; }
+  .kpi-sub   { font-size:9px; }
+  .card { padding:14px; border-radius:10px; }
+  .card-title { font-size:10px; }
+  .card-tag   { font-size:9px; }
+  .tab-btn    { font-size:10px; padding:0 12px; height:40px; min-height:40px; }
+  /* Chart heights reduced for mobile */
+  .chart-h-sm  { height:160px; }
+  .chart-h-md  { height:190px; }
+  .chart-h-lg  { height:220px; }
+  .chart-h-xl  { height:240px; }
+  /* Donut + legend: stack on mobile */
+  .donut-wrap-mobile {
+    -webkit-flex-direction:column !important; flex-direction:column !important;
+    height:auto !important;
+  }
+  .donut-wrap-mobile > div:first-child { height:180px !important; }
+  .donut-legend { -webkit-flex-direction:row; flex-direction:row; -webkit-flex-wrap:wrap; flex-wrap:wrap; gap:6px; min-width:0; }
+  .dl-row { -webkit-flex:1 1 calc(50% - 3px); flex:1 1 calc(50% - 3px); }
+  /* Bar labels shorter */
+  .bar-lbl { font-size:10px; }
+  .bar-val  { font-size:10px; }
+  /* Tables: font size */
+  .dtbl { font-size:11px; }
+  .dtbl td, .dtbl th { padding:6px 5px; }
+  /* Heatmap per-clinic */
+  .hm-cell-label { font-size:8px !important; }
+}
+
+/* Small mobile: < 480px */
+@media (max-width:479px) {
+  body { font-size:13px; }
+  .wrap { padding:0 10px; }
+  .kpi { -webkit-flex:1 1 calc(50% - 4px); flex:1 1 calc(50% - 4px); min-width:110px; }
+  .kpi-value { font-size:18px; }
+  .tab-btn { font-size:9px; padding:0 10px; letter-spacing:.3px; }
+  .phy-card { -webkit-flex:1 1 100%; flex:1 1 100%; }
+  .chart-h-md { height:170px; }
+  .chart-h-lg { height:200px; }
+  /* Hide some kpi-sub on very small screens */
+  .kpi-sub { font-size:9px; }
+}
+
+/* Wide desktop: > 1400px */
+@media (min-width:1400px) {
+  .kpi { padding:18px; }
+  .card { padding:22px; }
+  .chart-h-md { height:240px; }
+  .chart-h-lg { height:280px; }
+  .chart-h-xl { height:360px; }
+}
+
+/* Print */
+@media print {
+  .nav { position:relative; }
+  body::before, body::after { display:none; }
+  .tab-panel { display:block !important; page-break-before:always; }
+  .card { break-inside:avoid; }
+  body { background:#fff !important; color:#000 !important; }
+}
+
+/* High contrast / accessibility */
+@media (prefers-contrast:high) {
+  :root { --border:rgba(0,190,255,.3); --border2:rgba(0,190,255,.5); }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion:reduce) {
+  *, *::before, *::after { -webkit-animation-duration:.01ms !important; animation-duration:.01ms !important; -webkit-transition-duration:.01ms !important; transition-duration:.01ms !important; }
+  html { scroll-behavior:auto; }
 }
 </style>
 </head>
@@ -175,9 +401,9 @@ h1.title span{color:var(--accent)}
 </header>
 </div>
 
-<nav class="nav">
+<nav class="nav" role="navigation" aria-label="Dashboard sections">
   <div class="wrap"><div class="nav-inner">
-    <button class="tab-btn active" onclick="T('daily',this)">Daily Volume</button>
+    <button class="tab-btn active" onclick="T('daily',this)" role="tab" aria-selected="true">Daily Volume</button>
     <button class="tab-btn" onclick="T('clinic',this)">Satellite Clinics</button>
     <button class="tab-btn" onclick="T('tat',this)">TAT Deep Dive</button>
     <button class="tab-btn" onclick="T('tests',this)">Tests & Subtypes</button>
@@ -206,35 +432,35 @@ h1.title span{color:var(--accent)}
   <div class="g2 mb">
     <div class="card">
       <div class="card-head"><div class="card-title">Daily Lab Volume — All AHD</div><div class="card-tag">Main + Satellite Mar 1-17</div></div>
-      <div class="chart-wrap" style="height:220px"><canvas id="cDailyAll"></canvas></div>
+      <div class="chart-wrap" class="chart-wrap chart-h-md"><canvas id="cDailyAll"></canvas></div>
     </div>
     <div class="card">
       <div class="card-head"><div class="card-title">Main vs Satellite — Daily Split</div><div class="card-tag">stacked</div></div>
-      <div class="chart-wrap" style="height:220px"><canvas id="cDailySplit"></canvas></div>
+      <div class="chart-wrap" class="chart-wrap chart-h-md"><canvas id="cDailySplit"></canvas></div>
     </div>
   </div>
 
   <div class="g3 mb">
     <div class="card">
       <div class="card-head"><div class="card-title">Day-of-Week Pattern</div><div class="card-tag">total tests Mar 1-17</div></div>
-      <div class="chart-wrap" style="height:180px"><canvas id="cDow"></canvas></div>
+      <div class="chart-wrap" class="chart-wrap chart-h-sm"><canvas id="cDow"></canvas></div>
       <div class="insight">📅 <strong>Tuesday</strong> is peak (16,384) — Mon & Sun close behind. <strong>Wednesday</strong> consistently lowest. Weekend (Sat) maintains 10,169.</div>
     </div>
     <div class="card">
       <div class="card-head"><div class="card-title">AHD Main TAT Trend</div><div class="card-tag">minutes draw→verify</div></div>
-      <div class="chart-wrap" style="height:180px"><canvas id="cMainTat"></canvas></div>
+      <div class="chart-wrap" class="chart-wrap chart-h-sm"><canvas id="cMainTat"></canvas></div>
       <div class="insight ok">✓ Main hospital TAT <strong>78–101 min</strong>. Mar 11 best at 78. Excellent consistency throughout March.</div>
     </div>
     <div class="card">
       <div class="card-head"><div class="card-title">Volume vs TAT Correlation</div><div class="card-tag">satellite avg</div></div>
-      <div class="chart-wrap" style="height:180px"><canvas id="cVolTat"></canvas></div>
+      <div class="chart-wrap" class="chart-wrap chart-h-sm"><canvas id="cVolTat"></canvas></div>
       <div class="insight warn">⚠ Satellite TAT <strong>not correlated with volume</strong> — high TAT days can have low volume (Mar 8: 216 min at 1,154 tests). Transport delay is structural.</div>
     </div>
   </div>
 
   <div class="card mb">
     <div class="card-head"><div class="card-title">Daily Detail Table — Mar 1–17</div><div class="card-tag">all AHD</div></div>
-    <div style="overflow-x:auto">
+    <div class="tbl-wrap">
     <table class="dtbl">
       <thead><tr>
         <th>Date</th><th>Day</th>
@@ -261,12 +487,12 @@ h1.title span{color:var(--accent)}
   <div class="g2 mb">
     <div class="card">
       <div class="card-head"><div class="card-title">Daily Volume per Clinic</div><div class="card-tag">Mar 1-17</div></div>
-      <div class="chart-wrap" style="height:240px"><canvas id="cClinicTrend"></canvas></div>
+      <div class="chart-wrap" class="chart-wrap chart-h-md"><canvas id="cClinicTrend"></canvas></div>
     </div>
     <div class="card">
       <div class="card-head"><div class="card-title">Clinic Volume Share</div><div class="card-tag">cumulative Mar 1-17</div></div>
-      <div style="display:flex;gap:16px;align-items:center;height:240px">
-        <div style="flex:1;height:240px;position:relative"><canvas id="cClinicShare"></canvas></div>
+      <div class="donut-wrap-mobile" style="display:-webkit-box;display:-webkit-flex;display:flex;gap:16px;-webkit-box-align:center;align-items:center">
+        <div style="-webkit-box-flex:1;-webkit-flex:1;flex:1;position:relative" class="chart-wrap chart-h-md"><canvas id="cClinicShare"></canvas></div>
         <div class="donut-legend" id="clinicLegend"></div>
       </div>
     </div>
@@ -274,7 +500,7 @@ h1.title span{color:var(--accent)}
 
   <div class="card mb">
     <div class="card-head"><div class="card-title">Clinic Summary Table</div><div class="card-tag">Mar 1-17 actuals</div></div>
-    <div style="overflow-x:auto">
+    <div class="tbl-wrap">
     <table class="dtbl">
       <thead><tr>
         <th>Clinic</th><th class="r">Total</th><th class="r">Daily Avg</th>
@@ -304,7 +530,7 @@ h1.title span{color:var(--accent)}
   <div class="g2 mb">
     <div class="card">
       <div class="card-head"><div class="card-title">TAT Trend — All Satellite Clinics</div><div class="card-tag">daily avg minutes Mar 1-17</div></div>
-      <div class="chart-wrap" style="height:260px"><canvas id="cTatTrend"></canvas></div>
+      <div class="chart-wrap" class="chart-wrap chart-h-lg"><canvas id="cTatTrend"></canvas></div>
     </div>
     <div class="card">
       <div class="card-head"><div class="card-title">TAT Distribution — Satellite</div><div class="card-tag">clinic avg over 17 days</div></div>
@@ -315,13 +541,13 @@ h1.title span{color:var(--accent)}
 
   <div class="card mb">
     <div class="card-head"><div class="card-title">TAT Heatmap — Clinic × Day</div><div class="card-tag">minutes · red=critical >220 · amber=high >180 · green=good</div></div>
-    <div style="overflow-x:auto" id="tatHeatmapWrap"></div>
+    <div class="tbl-wrap hm-scroll" id="tatHeatmapWrap"></div>
   </div>
 
   <div class="g2 mb">
     <div class="card">
       <div class="card-head"><div class="card-title">TAT Category Breakdown</div><div class="card-tag">clinic-days by TAT band</div></div>
-      <div class="chart-wrap" style="height:200px"><canvas id="cTatBands"></canvas></div>
+      <div class="chart-wrap" class="chart-wrap chart-h-sm"><canvas id="cTatBands"></canvas></div>
     </div>
     <div class="card">
       <div class="card-head"><div class="card-title">Worst TAT Days — All Clinics</div><div class="card-tag">top 10 clinic-day combinations</div></div>
@@ -344,14 +570,14 @@ h1.title span{color:var(--accent)}
   <div class="g2 mb">
     <div class="card">
       <div class="card-head"><div class="card-title">Subtype Distribution</div><div class="card-tag">all AHD</div></div>
-      <div style="display:flex;gap:16px;align-items:center;height:240px">
-        <div style="flex:1;height:240px;position:relative"><canvas id="cSubPie"></canvas></div>
+      <div class="donut-wrap-mobile" style="display:-webkit-box;display:-webkit-flex;display:flex;gap:16px;-webkit-box-align:center;align-items:center">
+        <div style="-webkit-box-flex:1;-webkit-flex:1;flex:1;position:relative" class="chart-wrap chart-h-md"><canvas id="cSubPie"></canvas></div>
         <div class="donut-legend" id="subLegend"></div>
       </div>
     </div>
     <div class="card">
       <div class="card-head"><div class="card-title">Main vs Satellite — Subtype Profile</div><div class="card-tag">normalised %</div></div>
-      <div class="chart-wrap" style="height:240px"><canvas id="cSubCompare"></canvas></div>
+      <div class="chart-wrap" class="chart-wrap chart-h-md"><canvas id="cSubCompare"></canvas></div>
     </div>
   </div>
 
@@ -368,7 +594,7 @@ h1.title span{color:var(--accent)}
 
   <div class="card mb">
     <div class="card-head"><div class="card-title">Subtype Daily Trend</div><div class="card-tag">Chemistry, Hematology, POC, Endocrinology</div></div>
-    <div class="chart-wrap" style="height:200px"><canvas id="cSubTrend"></canvas></div>
+    <div class="chart-wrap" class="chart-wrap chart-h-sm"><canvas id="cSubTrend"></canvas></div>
   </div>
 </div>
 
@@ -386,18 +612,18 @@ h1.title span{color:var(--accent)}
   <div class="g2 mb">
     <div class="card">
       <div class="card-head"><div class="card-title">POCT by Test — Main vs Satellite</div><div class="card-tag">two distinct programs</div></div>
-      <div class="chart-wrap" style="height:260px"><canvas id="cPoctCompare"></canvas></div>
+      <div class="chart-wrap" class="chart-wrap chart-h-lg"><canvas id="cPoctCompare"></canvas></div>
     </div>
     <div class="card">
       <div class="card-head"><div class="card-title">POCT per Satellite Clinic</div><div class="card-tag">volume and rate</div></div>
-      <div class="chart-wrap" style="height:260px"><canvas id="cPoctClinic"></canvas></div>
+      <div class="chart-wrap" class="chart-wrap chart-h-lg"><canvas id="cPoctClinic"></canvas></div>
     </div>
   </div>
 
   <div class="g2 mb">
     <div class="card">
       <div class="card-head"><div class="card-title">Satellite POCT Breakdown by Test</div><div class="card-tag">per clinic</div></div>
-      <div class="chart-wrap" style="height:240px"><canvas id="cPoctBreakdown"></canvas></div>
+      <div class="chart-wrap" class="chart-wrap chart-h-md"><canvas id="cPoctBreakdown"></canvas></div>
     </div>
     <div class="card">
       <div class="card-head"><div class="card-title">POCT Deployment Readiness</div><div class="card-tag">composite score: vol 30% · POCT% 30% · TAT 20% · simplicity 20%</div></div>
@@ -422,18 +648,18 @@ h1.title span{color:var(--accent)}
   <div class="g21 mb">
     <div class="card">
       <div class="card-head"><div class="card-title">Top 20 Ordering Physicians</div><div class="card-tag">Mar 1-17 all AHD</div></div>
-      <div class="chart-wrap" style="height:360px"><canvas id="cPhyBar"></canvas></div>
+      <div class="chart-wrap" class="chart-wrap chart-h-xl"><canvas id="cPhyBar"></canvas></div>
     </div>
     <div class="card">
       <div class="card-head"><div class="card-title">Specialty Mix</div><div class="card-tag">by order volume</div></div>
-      <div class="chart-wrap" style="height:200px"><canvas id="cSpecDonut"></canvas></div>
+      <div class="chart-wrap" class="chart-wrap chart-h-sm"><canvas id="cSpecDonut"></canvas></div>
       <div class="insight" style="margin-top:12px">Internal Medicine + Cardiology dominate Main hospital ordering. Family Medicine dominates Satellite. Two completely different ordering cultures.</div>
     </div>
   </div>
 
   <div class="card mb">
     <div class="card-head"><div class="card-title">Physician Profiles</div><div class="card-tag">top 20 · colour = location</div></div>
-    <div class="phy-grid" id="phyGrid"></div>
+    <div class="phy-grid" id="phyGrid" role="list"></div>
   </div>
 </div>
 
@@ -451,7 +677,7 @@ h1.title span{color:var(--accent)}
   <div class="g12 mb">
     <div class="card">
       <div class="card-head"><div class="card-title">Clinical Category Split</div><div class="card-tag">dept grouping</div></div>
-      <div class="chart-wrap" style="height:260px"><canvas id="cDeptCat"></canvas></div>
+      <div class="chart-wrap" class="chart-wrap chart-h-lg"><canvas id="cDeptCat"></canvas></div>
     </div>
     <div class="card">
       <div class="card-head"><div class="card-title">Top 20 Departments — AHD Main</div><div class="card-tag">test orders Mar 1-17</div></div>
@@ -482,12 +708,12 @@ h1.title span{color:var(--accent)}
   <div class="g2 mb">
     <div class="card">
       <div class="card-head"><div class="card-title">Modality Volumes — 3-Period</div><div class="card-tag">Jan · Feb · Mar 1-17</div></div>
-      <div class="chart-wrap" style="height:240px"><canvas id="cMidBar"></canvas></div>
+      <div class="chart-wrap" class="chart-wrap chart-h-md"><canvas id="cMidBar"></canvas></div>
     </div>
     <div class="card">
       <div class="card-head"><div class="card-title">Mar 1-17 Modality Mix</div><div class="card-tag">5,122 total exams</div></div>
-      <div style="display:flex;gap:16px;align-items:center;height:240px">
-        <div style="flex:1;height:240px;position:relative"><canvas id="cMidPie"></canvas></div>
+      <div class="donut-wrap-mobile" style="display:-webkit-box;display:-webkit-flex;display:flex;gap:16px;-webkit-box-align:center;align-items:center">
+        <div style="-webkit-box-flex:1;-webkit-flex:1;flex:1;position:relative" class="chart-wrap chart-h-md"><canvas id="cMidPie"></canvas></div>
         <div class="donut-legend" id="midLegend"></div>
       </div>
     </div>
@@ -496,7 +722,7 @@ h1.title span{color:var(--accent)}
   <div class="g2 mb">
     <div class="card">
       <div class="card-head"><div class="card-title">Specialty Modalities Trend</div><div class="card-tag">Jan → Feb → Mar 1-17</div></div>
-      <div class="chart-wrap" style="height:200px"><canvas id="cMidSpecialty"></canvas></div>
+      <div class="chart-wrap" class="chart-wrap chart-h-sm"><canvas id="cMidSpecialty"></canvas></div>
       <div class="insight warn">IR surging: 401 (Jan) → 400 (Feb) → <strong>259 in 17 days</strong> — on pace for 473 in March (+18%). Fluoro also up. Nuclear Med declining.</div>
     </div>
     <div class="card">
@@ -529,8 +755,8 @@ h1.title span{color:var(--accent)}
   <div class="g2 mb">
     <div class="card">
       <div class="card-head"><div class="card-title">Encounter Type Distribution</div><div class="card-tag">all AHD Mar 1-17</div></div>
-      <div style="display:flex;gap:16px;align-items:center;height:260px">
-        <div style="flex:1;height:260px;position:relative"><canvas id="cEncPie"></canvas></div>
+      <div class="donut-wrap-mobile" style="display:-webkit-box;display:-webkit-flex;display:flex;gap:16px;-webkit-box-align:center;align-items:center">
+        <div style="-webkit-box-flex:1;-webkit-flex:1;flex:1;position:relative" class="chart-wrap chart-h-md"><canvas id="cEncPie"></canvas></div>
         <div class="donut-legend" id="encLegend"></div>
       </div>
     </div>
@@ -563,12 +789,12 @@ h1.title span{color:var(--accent)}
   <div class="g2 mb">
     <div class="card">
       <div class="card-head"><div class="card-title">Hourly Volume — AHD Main</div><div class="card-tag">24h pattern all 17 days</div></div>
-      <div class="chart-wrap" style="height:220px"><canvas id="cHourMain"></canvas></div>
+      <div class="chart-wrap" class="chart-wrap chart-h-md"><canvas id="cHourMain"></canvas></div>
       <div class="insight">Dual-peak pattern: <strong>05:00 early spike</strong> (overnight ICU/ED labs being processed) + <strong>09-10:00 morning peak</strong> (outpatient draws begin). Lab runs continuously.</div>
     </div>
     <div class="card">
       <div class="card-head"><div class="card-title">Hourly Volume — Satellite Clinics</div><div class="card-tag">08-20h window</div></div>
-      <div class="chart-wrap" style="height:220px"><canvas id="cHourSat"></canvas></div>
+      <div class="chart-wrap" class="chart-wrap chart-h-md"><canvas id="cHourSat"></canvas></div>
       <div class="insight">Satellite draws are <strong>strictly daytime 08-17h</strong>. Dual morning peak at 09h and 15h. No overnight activity — all satellite TAT is computed against central lab transport.</div>
     </div>
   </div>
@@ -576,7 +802,7 @@ h1.title span{color:var(--accent)}
   <div class="g2 mb">
     <div class="card">
       <div class="card-head"><div class="card-title">Day-of-Week Heatmap</div><div class="card-tag">test volume by day</div></div>
-      <div class="chart-wrap" style="height:200px"><canvas id="cDowBar"></canvas></div>
+      <div class="chart-wrap" class="chart-wrap chart-h-sm"><canvas id="cDowBar"></canvas></div>
       <div class="insight warn">Wednesday drops <strong>33% below Tuesday</strong>. Plan staffing and collection schedules accordingly. Weekend (Fri-Sat) maintains 65-70% of peak day volume.</div>
     </div>
     <div class="card">
@@ -591,8 +817,8 @@ h1.title span{color:var(--accent)}
 
 </div><!-- end .wrap -->
 
-<footer style="border-top:1px solid var(--border);padding:16px 0;margin-top:20px">
-  <div class="wrap" style="display:flex;justify-content:space-between;font-family:var(--mono);font-size:10px;color:var(--text3)">
+<footer>
+  <div class="wrap"><div class="footer-inner">
     <span>AHD Diagnostic Center · Deep Analytics · Mar 1–17, 2026</span>
     <span>84,715 lab records · 5,122 MID exams · 17 days</span>
   </div>
@@ -607,10 +833,19 @@ const C={
   clinics:['#00beff','#ff6b2b','#c77dff','#00ffb3','#ffb703','#ff3860','#00d4aa']
 };
 Chart.defaults.color='#8fb8d8';
-Chart.defaults.font.family="'JetBrains Mono',monospace";
+Chart.defaults.font.family="'JetBrains Mono','Cascadia Code','Fira Code',monospace";
 Chart.defaults.font.size=11;
+Chart.defaults.responsive=true;
+Chart.defaults.maintainAspectRatio=false;
+// Mobile: reduce tick density
+Chart.defaults.scale.ticks.maxTicksLimit=8;
+// Better touch interaction
+Chart.defaults.plugins.tooltip.intersect=false;
+Chart.defaults.plugins.tooltip.mode='nearest';
+// Prevent passive event listener warnings
+document.addEventListener('touchstart',function(){},{passive:true});
 const TT={backgroundColor:'#0d1a2e',borderColor:'rgba(0,190,255,0.3)',borderWidth:1,
-         titleColor:'#e8f4ff',bodyColor:'#8fb8d8',padding:10,cornerRadius:6};
+         titleColor:'#e8f4ff',bodyColor:'#8fb8d8',padding:12,cornerRadius:6,displayColors:false};
 
 // ── RAW DATA ────────────────────────────────────────────────────────────────
 const DAYS=Array.from({length:17},(_,i)=>`Mar ${i+1}`);
@@ -750,10 +985,22 @@ const DOW_VALS=  [14406,16384,9833,11085,7616,10169,15222];
 // ── TAB SWITCH ──────────────────────────────────────────────────────────────
 function T(id,btn){
   document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
-  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b=>{b.classList.remove('active');b.setAttribute('aria-selected','false');});
   document.getElementById('tab-'+id).classList.add('active');
   btn.classList.add('active');
+  btn.setAttribute('aria-selected','true');
+  // Scroll tab into view on mobile
+  btn.scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'});
 }
+// Keyboard navigation for tabs
+document.addEventListener('DOMContentLoaded',function(){
+  document.querySelectorAll('.tab-btn').forEach(function(btn,i,all){
+    btn.addEventListener('keydown',function(e){
+      if(e.key==='ArrowRight'&&i<all.length-1){all[i+1].focus();all[i+1].click();}
+      if(e.key==='ArrowLeft'&&i>0){all[i-1].focus();all[i-1].click();}
+    });
+  });
+});
 
 // ── HELPERS ─────────────────────────────────────────────────────────────────
 const pct=(a,b,tot)=>`${(a/tot*100).toFixed(1)}%`;
@@ -828,7 +1075,7 @@ CLINICS.forEach((cli,ci)=>{
       <div class="card-title" style="color:${C.clinics[ci]}">${cli}</div>
       <div class="card-tag">Total: ${CLINIC_TOTALS[cli].toLocaleString()} · Avg TAT: ${CLINIC_AVG_TAT[ci]} min</div>
     </div>
-    <div style="min-width:600px">
+    <div style="min-width:520px">
     <div style="display:flex;gap:4px;margin-bottom:2px">
       <div style="width:70px;font-family:var(--mono);font-size:9px;color:var(--text3)"></div>
       ${DAYS.map(d=>`<div style="flex:1;text-align:center;font-family:var(--mono);font-size:9px;color:var(--text3)">${d.replace('Mar ','')}</div>`).join('')}
@@ -1019,7 +1266,7 @@ const encTests={
   Inpatient: {tests:['Creatinine','Glucose','BUN','Bicarbonate','Potassium','Sodium'],vals:[590,520,480,470,460,450]},
   Emergency: {tests:['CBC','CRP','Blood Gas','Creatinine','Troponin','Lactate'],vals:[280,240,180,160,140,110]},
 };
-let etHTML='<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px">';
+let etHTML='<div style="display:-webkit-box;display:-webkit-flex;display:flex;-webkit-flex-wrap:wrap;flex-wrap:wrap;gap:14px">';
 Object.entries(encTests).forEach(([type,d])=>{
   const maxV=d.vals[0];
   const ec={'Outpatient':'var(--accent)','Inpatient':'var(--warn)','Emergency':'var(--danger)'}[type];
