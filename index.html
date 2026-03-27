@@ -622,8 +622,12 @@ footer { border-top:1px solid var(--border); padding:14px 0; margin-top:20px; }
       </div>
     </div>
     <div class="card">
-      <div class="card-head"><div class="card-title">Main vs Satellite — Subtype Profile</div><div class="card-tag">normalised %</div></div>
-      <div class="chart-wrap" class="chart-wrap chart-h-md"><canvas id="cSubCompare"></canvas></div>
+      <div class="card-head"><div class="card-title">Main vs Satellite — Subtype Profile</div><div class="card-tag">normalised % · Chemistry separate scale</div></div>
+      <div style="font-size:10px;font-weight:600;color:var(--accent);font-family:var(--mono);margin-bottom:4px">Chemistry</div>
+      <div class="chart-wrap chart-h-sm"><canvas id="cSubCompare"></canvas></div>
+      <div style="font-family:var(--mono);font-size:9px;color:var(--text3);text-align:center;padding:5px 0;border-top:1px solid rgba(0,190,255,0.08);margin-top:8px">Chemistry shown separately — different scale</div>
+      <div style="font-size:10px;font-weight:600;color:var(--text2);font-family:var(--mono);margin-bottom:4px">Other Subtypes</div>
+      <div class="chart-wrap chart-h-md"><canvas id="cSubCompareOther"></canvas></div>
     </div>
   </div>
 
@@ -639,8 +643,12 @@ footer { border-top:1px solid var(--border); padding:14px 0; margin-top:20px; }
   </div>
 
   <div class="card mb">
-    <div class="card-head"><div class="card-title">Subtype Daily Trend</div><div class="card-tag">Chemistry, Hematology, POC, Endocrinology</div></div>
-    <div class="chart-wrap" class="chart-wrap chart-h-sm"><canvas id="cSubTrend"></canvas></div>
+    <div class="card-head"><div class="card-title">Subtype Daily Trend</div><div class="card-tag">Chemistry · Hematology · POC · Endocrinology</div></div>
+    <div style="font-size:10px;font-weight:600;color:var(--accent);font-family:var(--mono);margin-bottom:4px">Chemistry</div>
+    <div class="chart-wrap chart-h-sm"><canvas id="cSubTrend"></canvas></div>
+    <div style="font-family:var(--mono);font-size:9px;color:var(--text3);text-align:center;padding:5px 0;border-top:1px solid rgba(0,190,255,0.08);margin-top:8px">Chemistry shown separately — different scale</div>
+    <div style="font-size:10px;font-weight:600;color:var(--text2);font-family:var(--mono);margin-bottom:4px">Other Subtypes — Hematology · POC · Endocrinology</div>
+    <div class="chart-wrap chart-h-sm"><canvas id="cSubTrendOther"></canvas></div>
   </div>
 </div>
 
@@ -1796,15 +1804,24 @@ new Chart(document.getElementById('cSubPie'),{type:'doughnut',
   data:{labels:SUBTYPES,datasets:[{data:SUB_MAIN.map((v,i)=>v+SUB_SAT[i]),backgroundColor:SUB_COLS,borderWidth:0,hoverOffset:8}]},
   options:{...so,plugins:{legend:{display:false},tooltip:Object.assign({},TT,{callbacks:{label:ctx=>`${ctx.label}: ${ctx.raw.toLocaleString()} (${(ctx.raw/91296*100).toFixed(1)}%)`}})},cutout:'52%'}});
 
-// Subtype Compare
+// Subtype Compare — split: Chemistry (A) vs all others (B)
 const mainTot2=SUB_MAIN.reduce((a,b)=>a+b,0), satTot2=SUB_SAT.reduce((a,b)=>a+b,0);
+// Chart A: Chemistry only (index 0)
 new Chart(document.getElementById('cSubCompare'),{type:'bar',
-  data:{labels:SUBTYPES,datasets:[
-    {label:'AHD Main %',data:SUB_MAIN.map(v=>+(v/mainTot2*100).toFixed(1)),backgroundColor:'rgba(0,190,255,0.7)',borderRadius:3},
-    {label:'Satellite %',data:SUB_SAT.map(v=>+(v/satTot2*100).toFixed(1)),backgroundColor:'rgba(255,107,43,0.7)',borderRadius:3}
+  data:{labels:['Chemistry'],datasets:[
+    {label:'AHD Main %',data:[+(SUB_MAIN[0]/mainTot2*100).toFixed(1)],backgroundColor:'rgba(0,190,255,0.7)',borderRadius:4},
+    {label:'Satellite %',data:[+(SUB_SAT[0]/satTot2*100).toFixed(1)],backgroundColor:'rgba(255,107,43,0.7)',borderRadius:4}
   ]},
   options:{...so,plugins:{legend:{position:'top',labels:{boxWidth:10,padding:8}},tooltip:{...TT}},
-    scales:{x:{grid:{display:false},ticks:{font:{size:9},maxRotation:30}},y:{grid:{color:'rgba(0,190,255,0.05)'},ticks:{callback:v=>v+'%',font:{size:10}}}}}});
+    scales:{x:{grid:{display:false},ticks:{font:{size:10}}},y:{grid:{color:'rgba(0,190,255,0.05)'},ticks:{callback:v=>v+'%',font:{size:10}},max:100,beginAtZero:true}}}});
+// Chart B: All other subtypes (indices 1–9)
+new Chart(document.getElementById('cSubCompareOther'),{type:'bar',
+  data:{labels:SUBTYPES.slice(1),datasets:[
+    {label:'AHD Main %',data:SUB_MAIN.slice(1).map(v=>+(v/mainTot2*100).toFixed(1)),backgroundColor:'rgba(0,190,255,0.7)',borderRadius:3},
+    {label:'Satellite %',data:SUB_SAT.slice(1).map(v=>+(v/satTot2*100).toFixed(1)),backgroundColor:'rgba(255,107,43,0.7)',borderRadius:3}
+  ]},
+  options:{...so,plugins:{legend:{display:false},tooltip:{...TT}},
+    scales:{x:{grid:{display:false},ticks:{font:{size:9},maxRotation:30}},y:{grid:{color:'rgba(0,190,255,0.05)'},ticks:{callback:v=>v+'%',font:{size:10}},beginAtZero:true}}}});
 
 // Sub Trend (daily)
 const dailySub={
@@ -1813,9 +1830,17 @@ const dailySub={
   POC:          [201,270,254,236,239,195,206,205,197,201,213,199,125,162,201,190,204,195,93,68,180,252,230,243,251,234],
   Endocrinology:[131,135,184,167,203,120,229,244,217,189,256,230,172,203,215,187,266,211,64,9,134,233,197,241,220,225],
 };
+// Sub Trend A: Chemistry only
 new Chart(document.getElementById('cSubTrend'),{type:'line',
-  data:{labels:DAYS,datasets:Object.entries(dailySub).map(([k,v],i)=>({
-    label:k,data:v,borderColor:SUB_COLS[i],backgroundColor:'transparent',borderWidth:2,pointRadius:3,tension:.3
+  data:{labels:DAYS,datasets:[{
+    label:'Chemistry',data:dailySub.Chemistry,borderColor:SUB_COLS[0],
+    backgroundColor:'rgba(0,190,255,0.06)',borderWidth:2,pointRadius:2,tension:.3,fill:true
+  }]},
+  options:{...so,interaction:{mode:'index',intersect:false},plugins:{legend:{position:'top',labels:{boxWidth:10,padding:8,font:{size:10}}},tooltip:{...TT}},scales:sg()}});
+// Sub Trend B: All other subtypes (Hematology, POC, Endocrinology)
+new Chart(document.getElementById('cSubTrendOther'),{type:'line',
+  data:{labels:DAYS,datasets:Object.entries(dailySub).filter(([k])=>k!=='Chemistry').map(([k,v],i)=>({
+    label:k,data:v,borderColor:SUB_COLS[i+1],backgroundColor:'transparent',borderWidth:2,pointRadius:2,tension:.3
   }))},
   options:{...so,interaction:{mode:'index',intersect:false},plugins:{legend:{position:'top',labels:{boxWidth:10,padding:8,font:{size:10}}},tooltip:{...TT}},scales:sg()}});
 
