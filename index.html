@@ -1,0 +1,2544 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
+<meta name="theme-color" content="#080f1a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="format-detection" content="telephone=no">
+<title>AHD Diagnostic Center — March 2026 Deep Analytics</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+/* ─── DESIGN TOKENS ─────────────────────────────────────────── */
+:root {
+  --bg:#080f1a; --surface:#0d1a2e; --surface2:#122038; --surface3:#172843;
+  --border:rgba(0,190,255,0.1); --border2:rgba(0,190,255,0.2);
+  --accent:#00beff; --accent2:#00ffb3; --accent3:#ff6b2b; --accent4:#c77dff;
+  --warn:#ffb703; --danger:#ff3860; --ok:#06d6a0;
+  --text:#e8f4ff; --text2:#8fb8d8; --text3:#4a7a9b;
+  --font:'Space Grotesk',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  --mono:'JetBrains Mono','Cascadia Code','Fira Code',monospace;
+  --radius:10px; --radius-sm:6px; --radius-lg:14px;
+  --shadow:0 4px 24px rgba(0,0,0,0.4);
+  --nav-h:48px;
+  --touch-min:44px;
+}
+
+/* ─── RESET ──────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+html { scroll-behavior:smooth; -webkit-text-size-adjust:100%; text-size-adjust:100%; }
+body {
+  background:var(--bg); color:var(--text);
+  font-family:var(--font); font-size:15px; line-height:1.55;
+  overflow-x:hidden; -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
+}
+
+/* ─── NOISE + GRADIENT BG ────────────────────────────────────── */
+body::before {
+  content:''; position:fixed; inset:0; pointer-events:none; z-index:0;
+  opacity:.3;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+}
+body::after {
+  content:''; position:fixed; inset:0; pointer-events:none; z-index:0;
+  background:
+    radial-gradient(ellipse 80% 50% at 20% 0%,rgba(0,80,150,.15) 0%,transparent 60%),
+    radial-gradient(ellipse 60% 40% at 80% 100%,rgba(0,120,80,.1) 0%,transparent 50%);
+}
+
+/* ─── LAYOUT ─────────────────────────────────────────────────── */
+.wrap { position:relative; z-index:1; max-width:1600px; margin:0 auto; padding:0 max(20px,env(safe-area-inset-left,20px)); }
+
+/* ─── HEADER ─────────────────────────────────────────────────── */
+header { border-bottom:1px solid var(--border); padding:18px 0 14px; }
+.header-row {
+  display:-webkit-box; display:-webkit-flex; display:flex;
+  -webkit-box-align:start; -webkit-align-items:flex-start; align-items:flex-start;
+  -webkit-box-pack:justify; -webkit-justify-content:space-between; justify-content:space-between;
+  -webkit-flex-wrap:wrap; flex-wrap:wrap; gap:14px;
+}
+.logo-tag { font-size:10px; letter-spacing:3px; text-transform:uppercase; color:var(--accent); margin-bottom:5px; font-family:var(--mono); }
+h1.title { font-size:clamp(18px,4vw,28px); font-weight:700; letter-spacing:-.5px; }
+h1.title span { color:var(--accent); }
+.subtitle { font-family:var(--mono); font-size:11px; color:var(--text3); margin-top:3px; }
+.header-pills {
+  display:-webkit-box; display:-webkit-flex; display:flex;
+  -webkit-flex-wrap:wrap; flex-wrap:wrap; gap:6px; -webkit-box-align:center; align-items:center;
+}
+.pill {
+  padding:4px 12px; border:1px solid var(--border2); border-radius:20px;
+  font-family:var(--mono); font-size:11px; color:var(--accent);
+  background:rgba(0,190,255,.05); white-space:nowrap;
+}
+.pill.warn { color:var(--warn); border-color:rgba(255,183,3,.3); background:rgba(255,183,3,.05); }
+.pill.ok   { color:var(--ok);   border-color:rgba(6,214,160,.3); background:rgba(6,214,160,.05); }
+
+/* ─── NAV ────────────────────────────────────────────────────── */
+.nav {
+  position:-webkit-sticky; position:sticky; top:0; z-index:200;
+  will-change:transform;
+  background:rgba(8,15,26,.96);
+  -webkit-backdrop-filter:blur(16px) saturate(180%);
+  backdrop-filter:blur(16px) saturate(180%);
+  border-bottom:1px solid var(--border);
+}
+/* @supports fallback for browsers without backdrop-filter */
+@supports not (backdrop-filter:blur(1px)) {
+  .nav { background:rgba(8,15,26,.99); }
+}
+.nav-inner {
+  display:-webkit-box; display:-webkit-flex; display:flex;
+  gap:0; overflow-x:auto; -webkit-overflow-scrolling:touch;
+  scrollbar-width:none; -ms-overflow-style:none;
+}
+.nav-inner::-webkit-scrollbar { display:none; }
+.tab-btn {
+  padding:0 18px; height:var(--touch-min); min-height:var(--touch-min);
+  font-family:var(--font); font-size:11px; font-weight:600;
+  letter-spacing:.6px; text-transform:uppercase; color:var(--text3);
+  background:none; border:none; border-bottom:2px solid transparent;
+  cursor:pointer; white-space:nowrap;
+  -webkit-transition:all .2s; transition:all .2s; -webkit-flex-shrink:0; flex-shrink:0;
+  -webkit-tap-highlight-color:transparent; touch-action:manipulation;
+  -webkit-appearance:none; appearance:none;
+}
+.tab-btn:hover { color:var(--text2); }
+.tab-btn.active { color:var(--accent); border-bottom-color:var(--accent); }
+.tab-btn:focus-visible { outline:2px solid var(--accent); outline-offset:-2px; }
+.tab-panel { display:none; padding:22px 0 48px; }
+.tab-panel.active { display:block; }
+
+/* ─── KPI STRIP ──────────────────────────────────────────────── */
+.kpi-strip {
+  display:-webkit-box; display:-webkit-flex; display:flex;
+  -webkit-flex-wrap:wrap; flex-wrap:wrap; gap:10px; margin-bottom:20px;
+}
+.kpi {
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:var(--radius); padding:14px 16px;
+  position:relative; overflow:hidden;
+  -webkit-box-flex:1; -webkit-flex:1 1 150px; flex:1 1 150px;
+  min-width:130px;
+}
+.kpi::before {
+  content:''; position:absolute; top:0; left:0; right:0; height:2px;
+  background:var(--kc,var(--accent));
+}
+.kpi-label { font-family:var(--mono); font-size:9px; text-transform:uppercase; letter-spacing:1.5px; color:var(--text3); margin-bottom:7px; }
+.kpi-value { font-size:clamp(17px,2.5vw,26px); font-weight:700; letter-spacing:-.5px; color:var(--kc,var(--accent)); line-height:1; }
+.kpi-sub { font-family:var(--mono); font-size:10px; color:var(--text3); margin-top:5px; }
+.kpi.blue{--kc:var(--accent)} .kpi.green{--kc:var(--accent2)} .kpi.orange{--kc:var(--accent3)}
+.kpi.purple{--kc:var(--accent4)} .kpi.yellow{--kc:var(--warn)} .kpi.red{--kc:var(--danger)} .kpi.teal{--kc:var(--ok)}
+
+/* ─── GRID ───────────────────────────────────────────────────── */
+.g2  { display:-webkit-box; display:-webkit-flex; display:flex; -webkit-flex-wrap:wrap; flex-wrap:wrap; gap:14px; margin-bottom:14px; }
+.g3  { display:-webkit-box; display:-webkit-flex; display:flex; -webkit-flex-wrap:wrap; flex-wrap:wrap; gap:14px; margin-bottom:14px; }
+.g21 { display:-webkit-box; display:-webkit-flex; display:flex; -webkit-flex-wrap:wrap; flex-wrap:wrap; gap:14px; margin-bottom:14px; }
+.g12 { display:-webkit-box; display:-webkit-flex; display:flex; -webkit-flex-wrap:wrap; flex-wrap:wrap; gap:14px; margin-bottom:14px; }
+.g13 { display:-webkit-box; display:-webkit-flex; display:flex; -webkit-flex-wrap:wrap; flex-wrap:wrap; gap:14px; margin-bottom:14px; }
+/* Column sizing via min-width on children */
+.g2  > * { -webkit-box-flex:1; -webkit-flex:1 1 320px; flex:1 1 320px; min-width:0; }
+.g3  > * { -webkit-box-flex:1; -webkit-flex:1 1 260px; flex:1 1 260px; min-width:0; }
+.g21 > *:first-child { -webkit-box-flex:2; -webkit-flex:2 1 420px; flex:2 1 420px; min-width:0; }
+.g21 > *:last-child  { -webkit-box-flex:1; -webkit-flex:1 1 260px; flex:1 1 260px; min-width:0; }
+.g12 > *:first-child { -webkit-box-flex:1; -webkit-flex:1 1 220px; flex:1 1 220px; min-width:0; }
+.g12 > *:last-child  { -webkit-box-flex:2; -webkit-flex:2 1 420px; flex:2 1 420px; min-width:0; }
+.g13 > *:first-child { -webkit-box-flex:1; -webkit-flex:1 1 180px; flex:1 1 180px; min-width:0; }
+.g13 > *:last-child  { -webkit-box-flex:3; -webkit-flex:3 1 480px; flex:3 1 480px; min-width:0; }
+.mb { margin-bottom:14px; }
+
+/* ─── CARD ───────────────────────────────────────────────────── */
+.card {
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:var(--radius-lg); padding:18px;
+  min-width:0; /* prevent flex overflow */
+  -webkit-box-shadow:var(--shadow); box-shadow:var(--shadow);
+}
+.card-head {
+  display:-webkit-box; display:-webkit-flex; display:flex;
+  -webkit-box-align:baseline; align-items:baseline;
+  -webkit-box-pack:justify; justify-content:space-between;
+  margin-bottom:14px; padding-bottom:10px;
+  border-bottom:1px solid var(--border); gap:8px; -webkit-flex-wrap:wrap; flex-wrap:wrap;
+}
+.card-title { font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:1px; color:var(--text2); }
+.card-tag   { font-family:var(--mono); font-size:10px; color:var(--text3); }
+
+/* ─── CHART WRAP ─────────────────────────────────────────────── */
+.chart-wrap { position:relative; width:100%; }
+/* Chart heights: use aspect-ratio where supported, fallback to fixed */
+.chart-h-sm  { height:180px; }
+.chart-h-md  { height:220px; }
+.chart-h-lg  { height:260px; }
+.chart-h-xl  { height:320px; }
+canvas { display:block; max-width:100%; }
+
+/* ─── INSIGHT ────────────────────────────────────────────────── */
+.insight {
+  border-left:3px solid var(--accent); padding:10px 13px;
+  background:rgba(0,190,255,.04); border-radius:0 var(--radius-sm) var(--radius-sm) 0;
+  margin-top:12px; font-size:12px; color:var(--text2); line-height:1.6;
+}
+.insight.warn   { border-left-color:var(--warn);   background:rgba(255,183,3,.04); }
+.insight.ok     { border-left-color:var(--ok);     background:rgba(6,214,160,.04); }
+.insight.danger { border-left-color:var(--danger); background:rgba(255,56,96,.04); }
+.insight strong { color:var(--text); }
+
+/* ─── SECTION LABEL ──────────────────────────────────────────── */
+.section-label {
+  font-family:var(--mono); font-size:10px; letter-spacing:2px;
+  text-transform:uppercase; color:var(--accent);
+  padding:12px 0 8px; border-bottom:1px solid var(--border); margin-bottom:16px;
+}
+
+/* ─── BAR ROWS ───────────────────────────────────────────────── */
+.bar-row {
+  display:-webkit-box; display:-webkit-flex; display:flex;
+  -webkit-box-align:center; align-items:center; gap:8px; margin-bottom:8px;
+}
+.bar-lbl  { font-size:11px; color:var(--text2); -webkit-flex-shrink:0; flex-shrink:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.bar-track { -webkit-box-flex:1; flex:1; height:6px; background:rgba(255,255,255,.05); border-radius:3px; overflow:hidden; min-width:0; }
+.bar-fill  { height:100%; border-radius:3px; -webkit-transition:width .6s ease; transition:width .6s ease; }
+.bar-val   { font-family:var(--mono); font-size:11px; color:var(--text3); text-align:right; -webkit-flex-shrink:0; flex-shrink:0; }
+
+/* ─── CLINIC FILTER ──────────────────────────────────────────── */
+.clinic-filter {
+  display:-webkit-box; display:-webkit-flex; display:flex;
+  -webkit-flex-wrap:wrap; flex-wrap:wrap; gap:6px; margin-bottom:14px;
+}
+.cf-btn {
+  padding:7px 13px; border:1px solid var(--border); border-radius:16px;
+  font-size:12px; font-weight:500; color:var(--text3); background:none;
+  cursor:pointer; -webkit-transition:all .15s; transition:all .15s;
+  -webkit-tap-highlight-color:transparent; touch-action:manipulation;
+  min-height:36px; -webkit-appearance:none;
+}
+.cf-btn:hover, .cf-btn.active { border-color:var(--accent); color:var(--accent); background:rgba(0,190,255,.08); }
+
+/* ─── DATA TABLE ─────────────────────────────────────────────── */
+.tbl-wrap { overflow-x:auto; -webkit-overflow-scrolling:touch; }
+.dtbl { width:100%; border-collapse:collapse; min-width:480px; }
+.dtbl th {
+  font-family:var(--mono); font-size:9px; text-transform:uppercase;
+  letter-spacing:1px; color:var(--text3); text-align:left;
+  padding:8px; border-bottom:2px solid var(--border2); white-space:nowrap;
+}
+.dtbl th.r { text-align:right; }
+.dtbl td   { padding:9px 8px; font-size:12px; border-bottom:1px solid rgba(0,190,255,.04); vertical-align:middle; }
+.dtbl td.r { text-align:right; font-family:var(--mono); }
+.dtbl tr:hover td { background:rgba(0,190,255,.03); }
+.dtbl tr:last-child td { border-bottom:none; }
+.badge {
+  display:inline-block; padding:3px 8px; border-radius:10px;
+  font-size:9px; font-weight:700; letter-spacing:.5px; text-transform:uppercase; white-space:nowrap;
+}
+.badge.red  { background:rgba(255,56,96,.15);   color:#ff8080; }
+.badge.warn { background:rgba(255,183,3,.15);   color:var(--warn); }
+.badge.ok   { background:rgba(6,214,160,.15);   color:var(--ok); }
+.badge.blue { background:rgba(0,190,255,.15);   color:var(--accent); }
+
+/* ─── TAT GAUGE ──────────────────────────────────────────────── */
+.tat-bar-bg  { -webkit-box-flex:1; flex:1; height:8px; background:rgba(255,255,255,.06); border-radius:4px; overflow:hidden; }
+.tat-bar-fill{ height:8px; border-radius:4px; }
+
+/* ─── DONUT LEGEND ───────────────────────────────────────────── */
+.donut-legend { display:-webkit-box; display:-webkit-flex; display:flex; -webkit-flex-direction:column; flex-direction:column; gap:5px; justify-content:center; min-width:100px; }
+.dl-row  { display:-webkit-box; display:-webkit-flex; display:flex; -webkit-box-align:center; align-items:center; gap:7px; }
+.dl-dot  { width:10px; height:10px; border-radius:2px; -webkit-flex-shrink:0; flex-shrink:0; }
+.dl-name { font-size:11px; color:var(--text2); -webkit-box-flex:1; flex:1; }
+.dl-val  { font-family:var(--mono); font-size:11px; color:var(--text3); }
+
+/* ─── PHYSICIAN CARDS ────────────────────────────────────────── */
+.phy-grid {
+  display:-webkit-box; display:-webkit-flex; display:flex;
+  -webkit-flex-wrap:wrap; flex-wrap:wrap; gap:10px;
+}
+.phy-card {
+  background:var(--surface2); border:1px solid var(--border); border-radius:8px;
+  padding:12px; -webkit-box-flex:1; -webkit-flex:1 1 200px; flex:1 1 200px; min-width:0;
+}
+.phy-name   { font-size:12px; font-weight:600; color:var(--text); margin-bottom:3px; }
+.phy-spec   { font-size:10px; color:var(--accent); font-family:var(--mono); }
+.phy-loc    { font-size:10px; color:var(--text3); margin-top:2px; }
+.phy-bar-bg { width:100%; height:3px; background:rgba(255,255,255,.06); border-radius:2px; margin-top:8px; }
+.phy-bar-fill { height:3px; border-radius:2px; background:-webkit-linear-gradient(left,var(--accent),var(--accent2)); background:linear-gradient(90deg,var(--accent),var(--accent2)); }
+
+/* ─── HEATMAP ────────────────────────────────────────────────── */
+.hm-scroll { overflow-x:auto; -webkit-overflow-scrolling:touch; }
+
+/* ─── SCROLLABLE CONTAINERS ──────────────────────────────────── */
+.scroll-x { overflow-x:auto; -webkit-overflow-scrolling:touch; }
+
+/* ─── FOOTER ─────────────────────────────────────────────────── */
+footer { border-top:1px solid var(--border); padding:14px 0; margin-top:20px; }
+.footer-inner {
+  display:-webkit-box; display:-webkit-flex; display:flex;
+  -webkit-box-pack:justify; justify-content:space-between; -webkit-flex-wrap:wrap; flex-wrap:wrap;
+  gap:8px; font-family:var(--mono); font-size:10px; color:var(--text3);
+}
+
+
+/* ─── TREND ANNOTATIONS ─────────────────────────────────────────── */
+.annotation-strip{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+.ann{padding:4px 10px;border-radius:4px;font-family:var(--mono);font-size:10px;font-weight:500;white-space:nowrap}
+.ann.holiday{background:rgba(255,183,3,.15);color:var(--warn);border:1px solid rgba(255,183,3,.3)}
+.ann.eid{background:rgba(199,125,255,.15);color:var(--accent4);border:1px solid rgba(199,125,255,.3)}
+.ann.peak{background:rgba(6,214,160,.15);color:var(--ok);border:1px solid rgba(6,214,160,.3)}
+.ann.alert{background:rgba(255,56,96,.15);color:var(--danger);border:1px solid rgba(255,56,96,.3)}
+.ann.info{background:rgba(0,190,255,.12);color:var(--accent);border:1px solid rgba(0,190,255,.25)}
+.pattern-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;margin-bottom:16px}
+.pattern-card{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:14px;border-left:3px solid var(--pc,var(--accent))}
+.pattern-card h4{font-size:12px;font-weight:700;color:var(--text);margin-bottom:6px}
+.pattern-card p{font-size:11px;color:var(--text2);line-height:1.6;margin:0}
+.pattern-card .metric{font-family:var(--mono);font-size:13px;font-weight:700;color:var(--pc,var(--accent));margin:6px 0 4px}
+.trend-overlay-wrap{position:relative}
+.trend-note{position:absolute;top:6px;right:8px;font-family:var(--mono);font-size:9px;color:var(--text3);pointer-events:none}
+
+
+/* ─── LOGO ──────────────────────────────────────────────────────── */
+.ahd-logo {
+  height: 56px;
+  width: auto;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+.logo-group {
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: flex;
+  -webkit-box-align: center;
+  -webkit-align-items: center;
+  align-items: center;
+  gap: 16px;
+}
+@media (max-width: 767px) {
+  .ahd-logo { height: 40px; }
+  .logo-group { gap: 10px; }
+}
+@media (max-width: 479px) {
+  .ahd-logo { height: 34px; }
+}
+
+/* ─── RESPONSIVENESS ─────────────────────────────────────────── */
+
+/* Tablet: 768px - 1023px */
+@media (max-width:1023px) {
+  :root { --nav-h:44px; }
+  .wrap { padding:0 16px; }
+  .tab-btn { font-size:10px; padding:0 14px; }
+  .kpi { -webkit-flex:1 1 140px; flex:1 1 140px; min-width:120px; }
+  .chart-h-xl { height:280px; }
+}
+
+/* Large mobile / small tablet: 600px - 767px */
+@media (max-width:767px) {
+  body { font-size:14px; }
+  .wrap { padding:0 12px; }
+  header { padding:14px 0 10px; }
+  h1.title { font-size:clamp(16px,5vw,22px); }
+  .pill { font-size:10px; padding:3px 9px; }
+  .logo-tag { font-size:9px; letter-spacing:2px; }
+  .subtitle { display:none; }
+  /* Force single column on all grids */
+  .g2 > *, .g3 > *, .g21 > *, .g12 > *, .g13 > * {
+    -webkit-flex:1 1 100% !important; flex:1 1 100% !important;
+  }
+  .kpi-strip { gap:8px; }
+  .kpi { -webkit-flex:1 1 calc(50% - 4px); flex:1 1 calc(50% - 4px); min-width:130px; padding:12px; }
+  .kpi-label { font-size:8.5px; }
+  .kpi-value { font-size:20px; }
+  .kpi-sub   { font-size:9px; }
+  .card { padding:14px; border-radius:10px; }
+  .card-title { font-size:10px; }
+  .card-tag   { font-size:9px; }
+  .tab-btn    { font-size:10px; padding:0 12px; height:40px; min-height:40px; }
+  /* Chart heights reduced for mobile */
+  .chart-h-sm  { height:160px; }
+  .chart-h-md  { height:190px; }
+  .chart-h-lg  { height:220px; }
+  .chart-h-xl  { height:240px; }
+  /* Donut + legend: stack on mobile */
+  .donut-wrap-mobile {
+    -webkit-flex-direction:column !important; flex-direction:column !important;
+    height:auto !important;
+  }
+  .donut-wrap-mobile > div:first-child { height:180px !important; }
+  .donut-legend { -webkit-flex-direction:row; flex-direction:row; -webkit-flex-wrap:wrap; flex-wrap:wrap; gap:6px; min-width:0; }
+  .dl-row { -webkit-flex:1 1 calc(50% - 3px); flex:1 1 calc(50% - 3px); }
+  /* Bar labels shorter */
+  .bar-lbl { font-size:10px; }
+  .bar-val  { font-size:10px; }
+  /* Tables: font size */
+  .dtbl { font-size:11px; }
+  .dtbl td, .dtbl th { padding:6px 5px; }
+  /* Heatmap per-clinic */
+  .hm-cell-label { font-size:8px !important; }
+}
+
+/* Small mobile: < 480px */
+@media (max-width:479px) {
+  body { font-size:13px; }
+  .wrap { padding:0 10px; }
+  .kpi { -webkit-flex:1 1 calc(50% - 4px); flex:1 1 calc(50% - 4px); min-width:110px; }
+  .kpi-value { font-size:18px; }
+  .tab-btn { font-size:9px; padding:0 10px; letter-spacing:.3px; }
+  .phy-card { -webkit-flex:1 1 100%; flex:1 1 100%; }
+  .chart-h-md { height:170px; }
+  .chart-h-lg { height:200px; }
+  /* Hide some kpi-sub on very small screens */
+  .kpi-sub { font-size:9px; }
+}
+
+/* Wide desktop: > 1400px */
+@media (min-width:1400px) {
+  .kpi { padding:18px; }
+  .card { padding:22px; }
+  .chart-h-md { height:240px; }
+  .chart-h-lg { height:280px; }
+  .chart-h-xl { height:360px; }
+}
+
+/* Print */
+@media print {
+  .nav { position:relative; }
+  body::before, body::after { display:none; }
+  .tab-panel { display:block !important; page-break-before:always; }
+  .card { break-inside:avoid; }
+  body { background:#fff !important; color:#000 !important; }
+}
+
+/* High contrast / accessibility */
+@media (prefers-contrast:high) {
+  :root { --border:rgba(0,190,255,.3); --border2:rgba(0,190,255,.5); }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion:reduce) {
+  *, *::before, *::after { -webkit-animation-duration:.01ms !important; animation-duration:.01ms !important; -webkit-transition-duration:.01ms !important; transition-duration:.01ms !important; }
+  html { scroll-behavior:auto; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <div class="header-row">
+    <div class="logo-group"><img src="data:image/png;base64,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NW9316kN0LJvTTY1HYVtwotnWjaqwXezXG5RNrJKmkNIY/EY8Bz2nfcOO/vkY4YcrRaj1ja7Js9qtbTCWe3QUHhobFgvlaWgta3JA3jkAeUqCx0VgCD9W7vm4eupLvWygXHYtQbNRqSsijo2wM8N6lpdK2J+81rm8t3gBgHkFDkvGsmpRfV79TupWJNMrx0g9rFq2l0NmprdaLjb3W6pkleap0ZDw5m7gbjj+talsb1dSaF2g0epq2jqayCngmjMNOWh7i9oAI3iBw86mn61UfDd3zcPXT61UfDd3zcPXVyORixr7NPb3kDqtcuZrcl7Y/tLtO0q2V9bbKGsoHUNQIJYaos3+LA4OG4SMHOOfMFd/avpGn1xoO56dmLWSzx79LKRnqp2+NG/0OAz5MrWNiGyL2tK66VTdRTXP2QiijdEacRMZuFxDuZJPjEeZSksmxxhbrU9l0LkU5Q0meaVVBUUtTNS1cDoKmCR0M8TuccjHFrm+hwI9C+qL+fU3+PH++Fb3aj0e7VrDVtVqShvk1oqK3ddVQimbLHJIG7pkHEEOIDQeOOGeZK1uh6LFPFWQy1Otah8UcjXubFQNa47pBxkuIHLuWzHiFLjq3oUnjTTLIt9yPMv1fg4DC/VgGgEREAREQBERAEREAREQBERAEREAREQBERAEREAREQBERAEREAREQBERAEREAREQBERAEREAREQBERAEREAREQBERAEREAREQBERAEX4gcDyIPmQH6iIgCIiAIi+S5oOCRnuygPpERAEREAREQBERAEREAREXgCIi9AREQBERAEREAREQBERAEREAREQBERAEREAREQBERAEREAREQBERAEREAREQBERAEREAREQBERAEREAREQBERAEREAREQBERAEREAREQBERAEREAREQBERAEREAREQEI9MCo1FbdC228WO919sgp7g2OtFLO6IvbI0tYS5uDwfu9uOKq2Nb6zPFus9RnzXeo9deh8sccrCyVjXtPNrgCP1qonTQhih2k2hsMTIwbQCQxoAz1z+5avD7k9KnH3lTJg/z6kVnW+swMu1nqMDy3eo9dWZ6HVVqW66avd5vd9udxpH1jaejZV1JmALG5ke1zsu4udukZx4nJRl0N4optqlY2WNkjfYiU4e0EZ6yLvVw4oo4WbkUbI29zWgD9S94hclrUo+8Y9b/PqVt6ZN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xnGVNiLuVUZJJ9xcyuE4uVXCq2Oqj03ZH2yfZ9V6IqLhJNeI6yOrYwdVHTmMNLS7xuLjxwcLn2n7OaHWjIakVPgVygbuMn3N9rmZzuubkZGeIIII4963pF72UeXl7j1cLxVjfheXzPAr7FsJvxmDX3u2tjyfGEchOPNw/apS2Y6Hh0TbamnZcJq2Wqe18rnNDWAgY8VvZw7yeQW4IuYUQg9UiDC4FhYVnaVR872sjraLsqtOqqqS5Us7rbcn/wApI1m9HKe97eHHygg9+VHUuwrUvXANuNnkZ924PyPRg/tVil+LyePXJ6tEeV5PYGVY7Jw0b66PQiPROxS326qjrdRVjLm9mC2mjZuw5/tZ4v8ANwHeFtm1PR9VrKx01sprmygZDUCZ+/CXtkAaQBgEcic+hbii6VUFHlS2LNXCMSqiWPCGkZdfF+/qQP7Qld8JKP5E/wBdbDs52U12k9Uw3k36CdjI3xvijpCwvDhyyXntAPoUrouY49cXqkVqPJ3h9Fisrho1ut39QiIpzbCIiAIiIAiIgCIiAIiIAiIgCIiAIiIAiIgCIiAIiIAiIgCIiAIiIAiIgCIiAIiIAiIgCIiAIiIAiIgCIiAIiIAiIgC/CAeYyv1EB+AAcgAi/UQBERAEREAREQBERAEREAREQBERAEREAREQBERAEREAREQBERAEREAREQBERAEREAREQBERAEREAREQBERAEREAREQBERAEREAREQBERAEREAREQBERAEREAREQBERAEREAREQBERAEREAREQBERAEREAREQBERAEREAREQBERAEREAREQBERAEREAREQBERAEREAREQBERAEREAREQBERAEREAREQBERAEREAREQBERAEREAREQBERAEREAREQBERAEREAREQBERAEREAREQBERAEREAREQBERAEREAREQBERAEREAREQBERAEREAREQBERAEREAREQBERAEREAREQBERAEREAREQBERAEREAREQBERAEREAREQBERAEREAREQBERAEREAREQBERAEREAREQBERAEREAREQBERAEREAREQBERAEREAREQBERAEREAREQBERAEREAREQBERAEREAREQH//Z" alt="AHD Diagnostic Center" class="ahd-logo"><div>
+      <div class="logo-tag">American Hospital Dubai · Lab & Imaging Intelligence</div>
+      <h1 class="title">March 2026 <span>Deep Analytics</span></h1>
+      <div class="subtitle">112,154 lab records · Mar 1–25, 2026 · AHD Main + 7 Satellite Clinics</div>
+    </div>
+    </div>
+    <div class="header-pills">
+      <div class="pill">Mar 1–25, 2026</div>
+      <div class="pill ok">112,154 Lab Records</div>
+      <div class="pill">6,255 MID Exams</div>
+      <div class="pill warn">Sat TAT avg 189 min</div>
+    </div>
+  </div>
+</header>
+</div>
+
+<nav class="nav" role="navigation" aria-label="Dashboard sections">
+  <div class="wrap"><div class="nav-inner">
+    <button class="tab-btn active" onclick="T('daily',this)" role="tab" aria-selected="true">Daily Volume</button>
+    <button class="tab-btn" onclick="T('clinic',this)">Satellite Clinics</button>
+    <button class="tab-btn" onclick="T('tat',this)">TAT Deep Dive</button>
+    <button class="tab-btn" onclick="T('tests',this)">Tests & Subtypes</button>
+    <button class="tab-btn" onclick="T('poct',this)">POCT Program</button>
+    <button class="tab-btn" onclick="T('physicians',this)">Physicians</button>
+    <button class="tab-btn" onclick="T('depts',this)">Departments</button>
+    <button class="tab-btn" onclick="T('mid',this)">Medical Imaging</button>
+    <button class="tab-btn" onclick="T('encounters',this)">Encounters</button>
+    <button class="tab-btn" onclick="T('ops',this)">Operations</button>
+    <button class="tab-btn" onclick="T('conversion',this)">Conversions</button>
+    <button class="tab-btn" onclick="T('trends',this)">Trends &amp; Patterns</button>
+    <button class="tab-btn" onclick="T('yoy',this);initYOY()">Year-on-Year</button>
+  </div></div>
+</nav>
+
+<div class="wrap">
+
+<!-- ═══════════ TAB: DAILY VOLUME ═══════════ -->
+<div id="tab-daily" class="tab-panel active">
+  <div class="kpi-strip">
+    <div class="kpi blue"><div class="kpi-label">Total Lab Tests</div><div class="kpi-value">112,154</div><div class="kpi-sub">Mar 1–24 · 24 days</div></div>
+    <div class="kpi green"><div class="kpi-label">Daily Avg (All)</div><div class="kpi-value">4,486</div><div class="kpi-sub">6,297 peak · Mar 5&7</div></div>
+    <div class="kpi orange"><div class="kpi-label">AHD Main Total</div><div class="kpi-value">87,497</div><div class="kpi-sub">80.2% of volume</div></div>
+    <div class="kpi purple"><div class="kpi-label">Satellite Total</div><div class="kpi-value">24,657</div><div class="kpi-sub">19.8% · 7 clinics</div></div>
+    <div class="kpi yellow"><div class="kpi-label">Busiest Day</div><div class="kpi-value">6,297</div><div class="kpi-sub">Mar 8 — Mon peak</div></div>
+    <div class="kpi teal"><div class="kpi-label">Quietest Day</div><div class="kpi-value">3,471</div><div class="kpi-sub">Mar 6 — Wednesday</div></div>
+  </div>
+
+  <div class="g2 mb">
+    <div class="card">
+      <div class="card-head"><div class="card-title">Daily Lab Volume — All AHD</div><div class="card-tag">Main + Satellite Mar 1-25</div></div>
+      <div class="chart-wrap" class="chart-wrap chart-h-md"><canvas id="cDailyAll"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><div class="card-title">Main vs Satellite — Daily Split</div><div class="card-tag">stacked</div></div>
+      <div class="chart-wrap" class="chart-wrap chart-h-md"><canvas id="cDailySplit"></canvas></div>
+    </div>
+  </div>
+
+  <div class="g3 mb">
+    <div class="card">
+      <div class="card-head"><div class="card-title">Day-of-Week Pattern</div><div class="card-tag">total tests Mar 1-25</div></div>
+      <div class="chart-wrap" class="chart-wrap chart-h-sm"><canvas id="cDow"></canvas></div>
+      <div class="insight">📅 <strong>Tuesday</strong> is peak (16,384) — Mon & Sun close behind. <strong>Wednesday</strong> consistently lowest. Weekend (Sat) maintains 10,169.</div>
+    </div>
+    <div class="card">
+      <div class="card-head"><div class="card-title">AHD Main TAT Trend</div><div class="card-tag">minutes draw→verify</div></div>
+      <div class="chart-wrap" class="chart-wrap chart-h-sm"><canvas id="cMainTat"></canvas></div>
+      <div class="insight ok">✓ Main hospital TAT <strong>78–101 min</strong>. Mar 11 best at 78. Excellent consistency throughout March.</div>
+    </div>
+    <div class="card">
+      <div class="card-head"><div class="card-title">Volume vs TAT Correlation</div><div class="card-tag">satellite avg</div></div>
+      <div class="chart-wrap" class="chart-wrap chart-h-sm"><canvas id="cVolTat"></canvas></div>
+      <div class="insight warn">⚠ Satellite TAT <strong>not correlated with volume</strong> — high TAT days can have low volume (Mar 8: 216 min at 1,154 tests). Transport delay is structural.</div>
+    </div>
+  </div>
+
+  <div class="card mb">
+    <div class="card-head"><div class="card-title">Daily Detail Table — Mar 1–24</div><div class="card-tag">all AHD</div></div>
+    <div class="tbl-wrap">
+    <table class="dtbl">
+      <thead><tr>
+        <th>Date</th><th>Day</th>
+        <th class="r">Main Tests</th><th class="r">Sat Tests</th><th class="r">Total</th>
+        <th class="r">Main TAT</th><th class="r">Sat TAT</th><th class="r">Sat TAT Status</th>
+      </tr></thead>
+      <tbody id="tbDailyDetail"></tbody>
+    </table>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ TAB: SATELLITE CLINICS ═══════════ -->
+<div id="tab-clinic" class="tab-panel">
+  <div class="kpi-strip">
+    <div class="kpi blue"><div class="kpi-label">Total Satellite Tests</div><div class="kpi-value">20,258</div><div class="kpi-sub">Mar 1–24</div></div>
+    <div class="kpi orange"><div class="kpi-label">#1 Clinic</div><div class="kpi-value" style="font-size:16px">ABC</div><div class="kpi-sub">4,565 tests · 27.3%</div></div>
+    <div class="kpi green"><div class="kpi-label">Best TAT Avg</div><div class="kpi-value" style="font-size:16px">NSC</div><div class="kpi-sub">155 min avg</div></div>
+    <div class="kpi red"><div class="kpi-label">Worst TAT Avg</div><div class="kpi-value" style="font-size:16px">AKC</div><div class="kpi-sub">193 min avg</div></div>
+    <div class="kpi purple"><div class="kpi-label">Top POCT Clinic</div><div class="kpi-value" style="font-size:16px">AKC</div><div class="kpi-sub">222 POCT tests</div></div>
+    <div class="kpi yellow"><div class="kpi-label">Highest POCT%</div><div class="kpi-value" style="font-size:16px">MSC</div><div class="kpi-sub">11.4% of tests</div></div>
+  </div>
+
+  <div class="g2 mb">
+    <div class="card">
+      <div class="card-head"><div class="card-title">Daily Volume per Clinic</div><div class="card-tag">Mar 1-25</div></div>
+      <div class="chart-wrap" class="chart-wrap chart-h-md"><canvas id="cClinicTrend"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><div class="card-title">Clinic Volume Share</div><div class="card-tag">cumulative Mar 1-25</div></div>
+      <div class="donut-wrap-mobile" style="display:-webkit-box;display:-webkit-flex;display:flex;gap:16px;-webkit-box-align:center;align-items:center">
+        <div style="-webkit-box-flex:1;-webkit-flex:1;flex:1;position:relative" class="chart-wrap chart-h-md"><canvas id="cClinicShare"></canvas></div>
+        <div class="donut-legend" id="clinicLegend"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card mb">
+    <div class="card-head"><div class="card-title">Clinic Summary Table</div><div class="card-tag">Mar 1-25 actuals</div></div>
+    <div class="tbl-wrap">
+    <table class="dtbl">
+      <thead><tr>
+        <th>Clinic</th><th class="r">Total</th><th class="r">Daily Avg</th>
+        <th class="r">POCT</th><th class="r">POCT%</th>
+        <th class="r">Avg TAT</th><th>TAT Status</th><th>Deploy Decision</th>
+      </tr></thead>
+      <tbody id="tbClinicSummary"></tbody>
+    </table>
+    </div>
+  </div>
+
+  <div class="section-label">Per-Clinic Daily Heatmap</div>
+  <div id="clinicHeatmaps"></div>
+</div>
+
+<!-- ═══════════ TAB: TAT DEEP DIVE ═══════════ -->
+<div id="tab-tat" class="tab-panel">
+  <div class="kpi-strip">
+    <div class="kpi teal"><div class="kpi-label">AHD Main Avg TAT</div><div class="kpi-value">88<span style="font-size:14px"> min</span></div><div class="kpi-sub">Mar 1-25 overall</div></div>
+    <div class="kpi red"><div class="kpi-label">Satellite Avg TAT</div><div class="kpi-value">189<span style="font-size:14px"> min</span></div><div class="kpi-sub">2.1× Main hospital</div></div>
+    <div class="kpi yellow"><div class="kpi-label">TAT Gap</div><div class="kpi-value">101<span style="font-size:14px"> min</span></div><div class="kpi-sub">Structural transport delay</div></div>
+    <div class="kpi teal"><div class="kpi-label">Best Sat TAT</div><div class="kpi-value" style="font-size:15px">NSC</div><div class="kpi-sub">155 min avg · Mar 11: 117</div></div>
+    <div class="kpi red"><div class="kpi-label">Worst Sat TAT</div><div class="kpi-value" style="font-size:15px">AKC</div><div class="kpi-sub">193 min avg · peak 253</div></div>
+    <div class="kpi orange"><div class="kpi-label">Critical Days (>220)</div><div class="kpi-value">14</div><div class="kpi-sub">clinic-days >220 min</div></div>
+  </div>
+
+  <div class="g2 mb">
+    <div class="card">
+      <div class="card-head"><div class="card-title">TAT Trend — All Satellite Clinics</div><div class="card-tag">daily avg minutes Mar 1-25</div></div>
+      <div class="chart-wrap" class="chart-wrap chart-h-lg"><canvas id="cTatTrend"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><div class="card-title">TAT Distribution — Satellite</div><div class="card-tag">clinic avg over 24 days</div></div>
+      <div id="tatGauges" style="padding-top:8px"></div>
+      <div class="insight warn">⚠ Every satellite clinic exceeds the AHD Main benchmark (88 min). The <strong>101-min structural gap</strong> is caused by sample transport — POCT deployment directly eliminates this for targeted tests.</div>
+    </div>
+  </div>
+
+  <div class="card mb">
+    <div class="card-head"><div class="card-title">TAT Heatmap — Clinic × Day</div><div class="card-tag">minutes · red=critical >220 · amber=high >180 · green=good</div></div>
+    <div class="tbl-wrap hm-scroll" id="tatHeatmapWrap"></div>
+  </div>
+
+  <div class="g2 mb">
+    <div class="card">
+      <div class="card-head"><div class="card-title">TAT Category Breakdown</div><div class="card-tag">clinic-days by TAT band</div></div>
+      <div class="chart-wrap" class="chart-wrap chart-h-sm"><canvas id="cTatBands"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><div class="card-title">Worst TAT Days — All Clinics</div><div class="card-tag">top 10 clinic-day combinations</div></div>
+      <div id="worstTatList"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ TAB: TESTS & SUBTYPES ═══════════ -->
+<div id="tab-tests" class="tab-panel">
+  <div class="kpi-strip">
+    <div class="kpi blue"><div class="kpi-label">Chemistry</div><div class="kpi-value">66,006</div><div class="kpi-sub">77.9% of all tests</div></div>
+    <div class="kpi purple"><div class="kpi-label">Hematology</div><div class="kpi-value">6,422</div><div class="kpi-sub">7.6%</div></div>
+    <div class="kpi green"><div class="kpi-label">Endocrinology</div><div class="kpi-value">3,658</div><div class="kpi-sub">4.3%</div></div>
+    <div class="kpi orange"><div class="kpi-label">POC</div><div class="kpi-value">3,591</div><div class="kpi-sub">4.2% · growing</div></div>
+    <div class="kpi yellow"><div class="kpi-label">Coagulation</div><div class="kpi-value">918</div><div class="kpi-sub">1.1%</div></div>
+    <div class="kpi teal"><div class="kpi-label">Mol Pathology</div><div class="kpi-value">655</div><div class="kpi-sub">0.8%</div></div>
+  </div>
+
+  <div class="g2 mb">
+    <div class="card">
+      <div class="card-head"><div class="card-title">Subtype Distribution</div><div class="card-tag">all AHD</div></div>
+      <div class="donut-wrap-mobile" style="display:-webkit-box;display:-webkit-flex;display:flex;gap:16px;-webkit-box-align:center;align-items:center">
+        <div style="-webkit-box-flex:1;-webkit-flex:1;flex:1;position:relative" class="chart-wrap chart-h-md"><canvas id="cSubPie"></canvas></div>
+        <div class="donut-legend" id="subLegend"></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-head"><div class="card-title">Main vs Satellite — Subtype Profile</div><div class="card-tag">normalised %</div></div>
+      <div class="chart-wrap" class="chart-wrap chart-h-md"><canvas id="cSubCompare"></canvas></div>
+    </div>
+  </div>
+
+  <div class="g2 mb">
+    <div class="card">
+      <div class="card-head"><div class="card-title">Top 15 Tests — AHD Main</div><div class="card-tag">high-acuity/ICU profile</div></div>
+      <div id="topTestsMain" style="padding-top:4px"></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><div class="card-title">Top 15 Tests — Satellite</div><div class="card-tag">primary care profile</div></div>
+      <div id="topTestsSat" style="padding-top:4px"></div>
+    </div>
+  </div>
+
+  <div class="card mb">
+    <div class="card-head"><div class="card-title">Subtype Daily Trend</div><div class="card-tag">Chemistry, Hematology, POC, Endocrinology</div></div>
+    <div class="chart-wrap" class="chart-wrap chart-h-sm"><canvas id="cSubTrend"></canvas></div>
+  </div>
+</div>
+
+<!-- ═══════════ TAB: POCT PROGRAM ═══════════ -->
+<div id="tab-poct" class="tab-panel">
+  <div class="kpi-strip">
+    <div class="kpi orange"><div class="kpi-label">Total POCT Tests</div><div class="kpi-value">3,591</div><div class="kpi-sub">Main 2,545 · Sat 1,046</div></div>
+    <div class="kpi blue"><div class="kpi-label">Rapid Strep — #1</div><div class="kpi-value">972</div><div class="kpi-sub">691 sat · 281 main</div></div>
+    <div class="kpi green"><div class="kpi-label">Glucose Random</div><div class="kpi-value">1,047</div><div class="kpi-sub">1,031 main · 16 sat</div></div>
+    <div class="kpi purple"><div class="kpi-label">Influenza A&B</div><div class="kpi-value">354</div><div class="kpi-sub">164 main · 190 sat</div></div>
+    <div class="kpi yellow"><div class="kpi-label">Top POCT Clinic</div><div class="kpi-value" style="font-size:15px">AKC</div><div class="kpi-sub">222 tests · 9.3%</div></div>
+    <div class="kpi teal"><div class="kpi-label">Highest POCT Rate</div><div class="kpi-value" style="font-size:15px">MSC</div><div class="kpi-sub">11.4% of clinic tests</div></div>
+  </div>
+
+  <div class="g2 mb">
+    <div class="card">
+      <div class="card-head"><div class="card-title">POCT by Test — Main vs Satellite</div><div class="card-tag">two distinct programs</div></div>
+      <div class="chart-wrap" class="chart-wrap chart-h-lg"><canvas id="cPoctCompare"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><div class="card-title">POCT per Satellite Clinic</div><div class="card-tag">volume and rate</div></div>
+      <div class="chart-wrap" class="chart-wrap chart-h-lg"><canvas id="cPoctClinic"></canvas></div>
+    </div>
+  </div>
+
+  <div class="g2 mb">
+    <div class="card">
+      <div class="card-head"><div class="card-title">Satellite POCT Breakdown by Test</div><div class="card-tag">per clinic</div></div>
+      <div class="chart-wrap" class="chart-wrap chart-h-md"><canvas id="cPoctBreakdown"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><div class="card-title">POCT Deployment Readiness</div><div class="card-tag">composite score: vol 30% · POCT% 30% · TAT 20% · simplicity 20%</div></div>
+      <table class="dtbl">
+        <thead><tr><th>Clinic</th><th class="r">Tests</th><th class="r">POCT%</th><th class="r">TAT</th><th class="r">Score</th><th>Decision</th></tr></thead>
+        <tbody id="tbPoct"></tbody>
+      </table>
+      <div class="insight ok">✅ <strong>MSC</strong> (score 76) and <strong>NSC</strong> (73) are deployment-ready. Rapid Strep + Flu combo covers 80%+ of satellite POCT demand with a single device.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ TAB: PHYSICIANS ═══════════ -->
+<div id="tab-physicians" class="tab-panel">
+  <div class="kpi-strip">
+    <div class="kpi blue"><div class="kpi-label">Physicians Tracked</div><div class="kpi-value">20+</div><div class="kpi-sub">Top 20 shown</div></div>
+    <div class="kpi orange"><div class="kpi-label">#1 Physician</div><div class="kpi-value" style="font-size:13px">Dr. Samer Burghleh</div><div class="kpi-sub">2,816 orders · Int Med</div></div>
+    <div class="kpi green"><div class="kpi-label">Top Satellite</div><div class="kpi-value" style="font-size:13px">Dr. Zahraa El Wahed</div><div class="kpi-sub">2,406 orders · Family Med</div></div>
+    <div class="kpi purple"><div class="kpi-label">Top Cardiologist</div><div class="kpi-value" style="font-size:13px">Dr. Heidar Arjomand</div><div class="kpi-sub">2,099 orders</div></div>
+  </div>
+
+  <div class="g21 mb">
+    <div class="card">
+      <div class="card-head"><div class="card-title">Top 20 Ordering Physicians</div><div class="card-tag">Mar 1-25 all AHD</div></div>
+      <div class="chart-wrap" class="chart-wrap chart-h-xl"><canvas id="cPhyBar"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><div class="card-title">Specialty Mix</div><div class="card-tag">by order volume</div></div>
+      <div class="chart-wrap" class="chart-wrap chart-h-sm"><canvas id="cSpecDonut"></canvas></div>
+      <div class="insight" style="margin-top:12px">Internal Medicine + Cardiology dominate Main hospital ordering. Family Medicine dominates Satellite. Two completely different ordering cultures.</div>
+    </div>
+  </div>
+
+  <div class="card mb">
+    <div class="card-head"><div class="card-title">Physician Profiles</div><div class="card-tag">top 20 · colour = location</div></div>
+    <div class="phy-grid" id="phyGrid" role="list"></div>
+  </div>
+</div>
+
+<!-- ═══════════ TAB: DEPARTMENTS ═══════════ -->
+<div id="tab-depts" class="tab-panel">
+  <div class="kpi-strip">
+    <div class="kpi blue"><div class="kpi-label">Top Department</div><div class="kpi-value" style="font-size:14px">CPCC</div><div class="kpi-sub">6,930 tests · Cardiology PCC</div></div>
+    <div class="kpi orange"><div class="kpi-label">ICU BT3</div><div class="kpi-value">5,707</div><div class="kpi-sub">Critical care</div></div>
+    <div class="kpi red"><div class="kpi-label">Emergency Dept</div><div class="kpi-value">5,744</div><div class="kpi-sub">STAT ordering</div></div>
+    <div class="kpi green"><div class="kpi-label">Cardiology</div><div class="kpi-value">5,963</div><div class="kpi-sub">CCARDIOLOGY ward</div></div>
+    <div class="kpi purple"><div class="kpi-label">Endocrinology</div><div class="kpi-value">4,684</div><div class="kpi-sub">Chronic disease load</div></div>
+    <div class="kpi yellow"><div class="kpi-label">Top 3 Share</div><div class="kpi-value">26.4%</div><div class="kpi-sub">of all AHD Main tests</div></div>
+  </div>
+
+  <div class="g12 mb">
+    <div class="card">
+      <div class="card-head"><div class="card-title">Clinical Category Split</div><div class="card-tag">dept grouping</div></div>
+      <div class="chart-wrap" class="chart-wrap chart-h-lg"><canvas id="cDeptCat"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><div class="card-title">Top 20 Departments — AHD Main</div><div class="card-tag">test orders Mar 1-25</div></div>
+      <div id="deptBars" style="padding-top:4px"></div>
+    </div>
+  </div>
+
+  <div class="card mb">
+    <div class="card-head"><div class="card-title">Department Detail</div><div class="card-tag">AHD Main · Mar 1-25</div></div>
+    <table class="dtbl">
+      <thead><tr><th>Department</th><th>Category</th><th class="r">Tests</th><th class="r">% of Main</th><th class="r">Rank</th></tr></thead>
+      <tbody id="tbDepts"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ═══════════ TAB: MEDICAL IMAGING ═══════════ -->
+<div id="tab-mid" class="tab-panel">
+  <div class="kpi-strip">
+    <div class="kpi blue"><div class="kpi-label">Total MID Mar 1-25</div><div class="kpi-value">6,255</div><div class="kpi-sub">24 days · Mar 1-25</div></div>
+    <div class="kpi green"><div class="kpi-label">Daily Avg</div><div class="kpi-value">260</div><div class="kpi-sub">vs Feb 370/day (−18.6%)</div></div>
+    <div class="kpi orange"><div class="kpi-label">X-Ray — #1</div><div class="kpi-value">2,082</div><div class="kpi-sub">33.3% of MID</div></div>
+    <div class="kpi purple"><div class="kpi-label">Ultrasound</div><div class="kpi-value">1,973</div><div class="kpi-sub">31.5%</div></div>
+    <div class="kpi yellow"><div class="kpi-label">MRI</div><div class="kpi-value">804</div><div class="kpi-sub">12.9%</div></div>
+    <div class="kpi teal"><div class="kpi-label">Projected Full Mar</div><div class="kpi-value">8,079</div><div class="kpi-sub">at 260/day calendar pace</div></div>
+  </div>
+
+  <div class="g2 mb">
+    <div class="card">
+      <div class="card-head"><div class="card-title">Modality Volumes — 3-Period</div><div class="card-tag">Jan · Feb · Mar 1-25</div></div>
+      <div class="chart-wrap" class="chart-wrap chart-h-md"><canvas id="cMidBar"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><div class="card-title">Mar 1-25 Modality Mix</div><div class="card-tag">6,255 total exams</div></div>
+      <div class="donut-wrap-mobile" style="display:-webkit-box;display:-webkit-flex;display:flex;gap:16px;-webkit-box-align:center;align-items:center">
+        <div style="-webkit-box-flex:1;-webkit-flex:1;flex:1;position:relative" class="chart-wrap chart-h-md"><canvas id="cMidPie"></canvas></div>
+        <div class="donut-legend" id="midLegend"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="g2 mb">
+    <div class="card">
+      <div class="card-head"><div class="card-title">Specialty Modalities Trend</div><div class="card-tag">Jan → Feb → Mar 1-25</div></div>
+      <div class="chart-wrap" class="chart-wrap chart-h-sm"><canvas id="cMidSpecialty"></canvas></div>
+      <div class="insight warn">IR surging: 401 (Jan) → 400 (Feb) → <strong>259 in 24 days</strong> — on pace for 473 in March (+18%). Fluoro also up. Nuclear Med declining.</div>
+    </div>
+    <div class="card">
+      <div class="card-head"><div class="card-title">Site Breakdown — Mar 1-25</div><div class="card-tag">Oud Metha · Science Park · Satellite</div></div>
+      <div id="midSiteBars" style="padding-top:4px"></div>
+      <div class="insight">Science Park contributing <strong>~10.0% of MID volume</strong>. Growing consistently across all modalities. Mar 17: 57 exams in SP alone.</div>
+    </div>
+  </div>
+
+  <div class="card mb">
+    <div class="card-head"><div class="card-title">Modality Detail Table</div><div class="card-tag">Jan · Feb · Mar 1-25 · % changes</div></div>
+    <table class="dtbl">
+      <thead><tr><th>Modality</th><th>Category</th><th class="r">Jan</th><th class="r">Feb</th><th class="r">Mar 1-25</th><th class="r">Mar Proj</th><th class="r">J→F %</th><th class="r">F→M %</th></tr></thead>
+      <tbody id="tbMid"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ═══════════ TAB: ENCOUNTERS ═══════════ -->
+<div id="tab-encounters" class="tab-panel">
+  <div class="kpi-strip">
+    <div class="kpi blue"><div class="kpi-label">Outpatient</div><div class="kpi-value">55,018</div><div class="kpi-sub">64.9% of all tests</div></div>
+    <div class="kpi orange"><div class="kpi-label">Inpatient</div><div class="kpi-value">19,261</div><div class="kpi-sub">22.7% · highest acuity</div></div>
+    <div class="kpi red"><div class="kpi-label">Emergency</div><div class="kpi-value">7,520</div><div class="kpi-sub">8.9% · STAT priority</div></div>
+    <div class="kpi green"><div class="kpi-label">Day Case</div><div class="kpi-value">2,314</div><div class="kpi-sub">2.7% · planned</div></div>
+    <div class="kpi yellow"><div class="kpi-label">Newborn</div><div class="kpi-value">249</div><div class="kpi-sub">0.3% · nursery</div></div>
+    <div class="kpi purple"><div class="kpi-label">Observation</div><div class="kpi-value">167</div><div class="kpi-sub">0.2%</div></div>
+  </div>
+
+  <div class="g2 mb">
+    <div class="card">
+      <div class="card-head"><div class="card-title">Encounter Type Distribution</div><div class="card-tag">all AHD Mar 1-25</div></div>
+      <div class="donut-wrap-mobile" style="display:-webkit-box;display:-webkit-flex;display:flex;gap:16px;-webkit-box-align:center;align-items:center">
+        <div style="-webkit-box-flex:1;-webkit-flex:1;flex:1;position:relative" class="chart-wrap chart-h-md"><canvas id="cEncPie"></canvas></div>
+        <div class="donut-legend" id="encLegend"></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-head"><div class="card-title">Top Tests by Encounter Type</div><div class="card-tag">ordered volume</div></div>
+      <div id="encTestGrid"></div>
+    </div>
+  </div>
+
+  <div class="card mb">
+    <div class="card-head"><div class="card-title">Encounter Type Analysis</div><div class="card-tag">clinical context</div></div>
+    <table class="dtbl">
+      <thead><tr><th>Type</th><th class="r">Tests</th><th class="r">%</th><th>Priority</th><th>Primary Tests</th><th>Clinical Context</th></tr></thead>
+      <tbody id="tbEnc"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ═══════════ TAB: OPERATIONS ═══════════ -->
+<div id="tab-ops" class="tab-panel">
+  <div class="kpi-strip">
+    <div class="kpi blue"><div class="kpi-label">Peak Hour</div><div class="kpi-value">10:00</div><div class="kpi-sub">8,470 tests drawn</div></div>
+    <div class="kpi orange"><div class="kpi-label">Early Spike 05h</div><div class="kpi-value">5,318</div><div class="kpi-sub">ICU/ED overnight orders</div></div>
+    <div class="kpi green"><div class="kpi-label">Sat Peak Hour</div><div class="kpi-value">09:00</div><div class="kpi-sub">2,282 tests</div></div>
+    <div class="kpi purple"><div class="kpi-label">Quiet Hour</div><div class="kpi-value">03:00</div><div class="kpi-sub">606 tests only</div></div>
+    <div class="kpi yellow"><div class="kpi-label">Sat Operating</div><div class="kpi-value">08–17h</div><div class="kpi-sub">Peak 09-11h</div></div>
+    <div class="kpi teal"><div class="kpi-label">Main 24h Coverage</div><div class="kpi-value">✓ Yes</div><div class="kpi-sub">All hours active</div></div>
+  </div>
+
+  <div class="g2 mb">
+    <div class="card">
+      <div class="card-head"><div class="card-title">Hourly Volume — AHD Main</div><div class="card-tag">24h pattern all 24 days</div></div>
+      <div class="chart-wrap" class="chart-wrap chart-h-md"><canvas id="cHourMain"></canvas></div>
+      <div class="insight">Dual-peak pattern: <strong>05:00 early spike</strong> (overnight ICU/ED labs being processed) + <strong>09-10:00 morning peak</strong> (outpatient draws begin). Lab runs continuously.</div>
+    </div>
+    <div class="card">
+      <div class="card-head"><div class="card-title">Hourly Volume — Satellite Clinics</div><div class="card-tag">08-17h window · Mar 1-17 baseline</div></div>
+      <div class="chart-wrap" class="chart-wrap chart-h-md"><canvas id="cHourSat"></canvas></div>
+      <div class="insight">Satellite draws are <strong>strictly daytime 08-17h</strong>. Dual morning peak at 09h and 15h. No overnight activity — all satellite TAT is computed against central lab transport.</div>
+    </div>
+  </div>
+
+  <div class="g2 mb">
+    <div class="card">
+      <div class="card-head"><div class="card-title">Day-of-Week Heatmap</div><div class="card-tag">test volume by day</div></div>
+      <div class="chart-wrap" class="chart-wrap chart-h-sm"><canvas id="cDowBar"></canvas></div>
+      <div class="insight warn">Wednesday drops <strong>33% below Tuesday</strong>. Plan staffing and collection schedules accordingly. Weekend (Fri-Sat) maintains 65-70% of peak day volume.</div>
+    </div>
+    <div class="card">
+      <div class="card-head"><div class="card-title">Operational Summary</div><div class="card-tag">Mar 1-25 key metrics</div></div>
+      <table class="dtbl">
+        <thead><tr><th>Metric</th><th class="r">AHD Main</th><th class="r">Satellite</th></tr></thead>
+        <tbody id="tbOps"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════ TAB: PATIENT VOLUME & CONVERSIONS ═══════════ -->
+<div id="tab-conversion" class="tab-panel">
+  <div class="kpi-strip">
+    <div class="kpi blue"><div class="kpi-label">AHD Main Attended</div><div class="kpi-value">20,039</div><div class="kpi-sub">Mar 1–24 · excl cancelled</div></div>
+    <div class="kpi orange"><div class="kpi-label">Satellite Attended</div><div class="kpi-value">9,633</div><div class="kpi-sub">7 core clinics Mar 1–24</div></div>
+    <div class="kpi green"><div class="kpi-label">Grand Total Patients</div><div class="kpi-value">29,672</div><div class="kpi-sub">AHD + 7 satellite clinics</div></div>
+    <div class="kpi yellow"><div class="kpi-label">AHD Lab Conversion</div><div class="kpi-value">4.53</div><div class="kpi-sub">tests per attended patient</div></div>
+    <div class="kpi purple"><div class="kpi-label">Sat Lab Conversion</div><div class="kpi-value">2.32</div><div class="kpi-sub">tests per attended patient</div></div>
+    <div class="kpi teal"><div class="kpi-label">MID Conversion</div><div class="kpi-value">0.31</div><div class="kpi-sub">imaging exams per AHD patient</div></div>
+  </div>
+
+  <div class="g2 mb">
+    <div class="card">
+      <div class="card-head"><div class="card-title">Daily Patient Volume — All Sites</div><div class="card-tag">attended Mar 1–24 · excl Mar 19–20 anomaly</div></div>
+      <div class="chart-wrap chart-h-md"><canvas id="cPtDaily"></canvas></div>
+      <div class="insight warn">⚠ <strong>Mar 19–20 anomaly</strong>: Only 12 and 7 patients recorded — confirmed Thu/Fri UAE reduced schedule. Excluded from conversion rate calculations.</div>
+    </div>
+    <div class="card">
+      <div class="card-head"><div class="card-title">Lab Tests vs Patient Volume</div><div class="card-tag">AHD Main — daily correlation</div></div>
+      <div class="chart-wrap chart-h-md"><canvas id="cPtLabCorr"></canvas></div>
+      <div class="insight">Strong correlation between patient volume and lab tests on standard days. <strong>Weekends (Fri)</strong> show elevated lab-per-patient ratios — fewer outpatients but same inpatient/ICU lab load.</div>
+    </div>
+  </div>
+
+  <div class="g3 mb">
+    <div class="card">
+      <div class="card-head"><div class="card-title">Appointment Status Mix</div><div class="card-tag">AHD Main Mar 1–24</div></div>
+      <div class="chart-wrap chart-h-sm"><canvas id="cAhdStatus"></canvas></div>
+      <div class="insight ok">AHD checkout rate <strong>60.2%</strong>. Combined with Checked In (11.9%), effective attendance is <strong>72.1%</strong> of scheduled appointments.</div>
+    </div>
+    <div class="card">
+      <div class="card-head"><div class="card-title">Appointment Status Mix</div><div class="card-tag">Satellite Clinics Mar 1–24</div></div>
+      <div class="chart-wrap chart-h-sm"><canvas id="cSatStatus"></canvas></div>
+      <div class="insight ok">Satellite checkout rate <strong>76.4%</strong> — higher than AHD Main. No-show rate 7.9% vs AHD 9.5%. Satellite patients show stronger attendance commitment.</div>
+    </div>
+    <div class="card">
+      <div class="card-head"><div class="card-title">Day-of-Week Patient Pattern</div><div class="card-tag">AHD Main attended</div></div>
+      <div class="chart-wrap chart-h-sm"><canvas id="cPtDow"></canvas></div>
+      <div class="insight">Tue–Thu peak window. <strong>Friday lowest</strong> — 57% drop vs Tuesday. Satellite clinics maintain better weekend volume (Fri–Sat = 28% of weekly total).</div>
+    </div>
+  </div>
+
+  <div class="g2 mb">
+    <div class="card">
+      <div class="card-head"><div class="card-title">Lab Conversion Rate — Daily Trend</div><div class="card-tag">tests per attended patient · standard days only</div></div>
+      <div class="chart-wrap chart-h-md"><canvas id="cConvRate"></canvas></div>
+      <div class="insight warn">Conversion rate spikes on <strong>Fri (8.3x)</strong> and <strong>Sat (5.9x)</strong> for AHD Main — driven by low outpatient volume against constant inpatient/ICU lab demand. Use Tue–Thu as the true operational baseline (<strong>3.5–4.5x</strong>).</div>
+    </div>
+    <div class="card">
+      <div class="card-head"><div class="card-title">Satellite Per Clinic — Daily Volume</div><div class="card-tag">attended patients Mar 1–24</div></div>
+      <div class="chart-wrap chart-h-md"><canvas id="cClinicPtTrend"></canvas></div>
+    </div>
+  </div>
+
+  <div class="g2 mb">
+    <div class="card">
+      <div class="card-head"><div class="card-title">AHD Main — Specialty Mix</div><div class="card-tag">attended appointments by category</div></div>
+      <div class="chart-wrap chart-h-lg"><canvas id="cSpecMix"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><div class="card-title">Satellite — Appointment Mix</div><div class="card-tag">attended by type</div></div>
+      <div class="chart-wrap chart-h-lg"><canvas id="cSatMix"></canvas></div>
+      <div class="insight">Satellite is <strong>primary care and paediatrics dominated</strong> (63% combined) — high-frequency, low-acuity visits generating 3.1 lab tests/patient vs AHD Main's 4.5x. POCT deployment directly addresses this profile.</div>
+    </div>
+  </div>
+
+  <div class="card mb">
+    <div class="card-head"><div class="card-title">Satellite Clinic Summary Table</div><div class="card-tag">attended patients · lab tests · conversions Mar 1–24</div></div>
+    <div class="tbl-wrap">
+    <table class="dtbl">
+      <thead><tr>
+        <th>Clinic</th>
+        <th class="r">Pts Attended</th><th class="r">Daily Avg</th>
+        <th class="r">Lab Tests</th><th class="r">Lab/Patient</th>
+        <th class="r">POCT Tests</th><th class="r">POCT%</th>
+        <th class="r">Avg TAT</th><th>Deploy</th>
+      </tr></thead>
+      <tbody id="tbClinicConv"></tbody>
+    </table>
+    </div>
+  </div>
+
+  <div class="card mb">
+    <div class="card-head"><div class="card-title">Daily Conversion Detail Table</div><div class="card-tag">Mar 1–24 · standard days only (excl Mar 19–20)</div></div>
+    <div class="tbl-wrap">
+    <table class="dtbl">
+      <thead><tr>
+        <th>Date</th><th>DOW</th>
+        <th class="r">AHD Pts</th><th class="r">AHD Lab</th><th class="r">Lab/Pt</th>
+        <th class="r">Sat Pts</th><th class="r">Sat Lab</th><th class="r">Lab/Pt</th>
+        <th class="r">MID Exams</th><th class="r">MID/AHD Pt</th>
+      </tr></thead>
+      <tbody id="tbConvDetail"></tbody>
+    </table>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════ TAB: TRENDS & PATTERNS ═══════════ -->
+<div id="tab-trends" class="tab-panel">
+
+  <!-- Holiday/event banner -->
+  <div class="annotation-strip">
+    <div class="ann info">📅 Mar 1–25, 2026 — 24 days total</div>
+    <div class="ann holiday">🏖 Mar 19 — Public Holiday (Thu)</div>
+    <div class="ann holiday">🏖 Mar 20 — Public Holiday (Fri)</div>
+    <div class="ann eid">☪️ Mar 21 — Eid Al-Fitr Day 1 (Sat)</div>
+    <div class="ann eid">☪️ Mar 22 — Eid Day 2 · Emergency services only</div>
+    <div class="ann peak">📈 Peak week: Mar 8–12</div>
+    <div class="ann alert">⚠ Sat TAT structurally flat at ~189 min all 24 days</div>
+  </div>
+
+  <!-- KPI snapshot -->
+  <div class="kpi-strip">
+    <div class="kpi blue"><div class="kpi-label">Effective Operating Days</div><div class="kpi-value">18</div><div class="kpi-sub">excl Mar 19–21 holidays</div></div>
+    <div class="kpi green"><div class="kpi-label">Peak Lab Day</div><div class="kpi-value">Mar 8</div><div class="kpi-sub">6,297 tests · Sun pre-week</div></div>
+    <div class="kpi orange"><div class="kpi-label">Pre-Eid Surge Mar 18</div><div class="kpi-value">5,427</div><div class="kpi-sub">highest Wed ever recorded</div></div>
+    <div class="kpi purple"><div class="kpi-label">Post-Eid Recovery Mar 22</div><div class="kpi-value">5,507</div><div class="kpi-sub">immediate full rebound</div></div>
+    <div class="kpi yellow"><div class="kpi-label">Eid Impact (19–21)</div><div class="kpi-value">−82%</div><div class="kpi-sub">vs 3-day avg baseline</div></div>
+    <div class="kpi teal"><div class="kpi-label">TAT Consistency</div><div class="kpi-value">±7 min</div><div class="kpi-sub">AHD Main std dev Mar 1–24</div></div>
+  </div>
+
+  <!-- SECTION 1: Unified multi-metric timeline -->
+  <div class="card mb">
+    <div class="card-head">
+      <div class="card-title">Unified Timeline — Lab · Patients · MID · TAT · Mar 1–24</div>
+      <div class="card-tag">multi-axis overlay · holiday bands shaded</div>
+    </div>
+    <div style="position:relative">
+      <div class="chart-wrap chart-h-xl"><canvas id="cUnified"></canvas></div>
+      <div style="position:absolute;top:0;left:0;right:0;bottom:0;pointer-events:none" id="holidayOverlay"></div>
+    </div>
+    <div class="annotation-strip" style="margin-top:10px;margin-bottom:0">
+      <div class="ann holiday">Mar 19–20 holiday</div>
+      <div class="ann eid">Mar 21 Eid Day 1</div>
+      <div class="ann info">Left axis: volume (patients/tests) · Right axis: TAT minutes</div>
+    </div>
+  </div>
+
+  <!-- SECTION 2: Pattern cards -->
+  <div class="section-label">Significant Patterns Identified</div>
+  <div class="pattern-grid">
+    <div class="pattern-card" style="--pc:var(--accent)">
+      <h4>🔁 Sunday–Monday Surge Cycle</h4>
+      <div class="metric">Sun avg 5,110 · Mon avg 5,019 tests</div>
+      <p>AHD consistently spikes on Sunday (Islamic weekend end) and Monday. The 3 Sundays in data (Mar 1, 8, 15) all exceed Tuesday–Wednesday. This is a structural UAE healthcare demand cycle, not noise.</p>
+    </div>
+    <div class="pattern-card" style="--pc:var(--warn)">
+      <h4>📉 Wednesday Structural Low</h4>
+      <div class="metric">Wed avg 4,448 tests — 13% below Mon</div>
+      <p>Across Mar 1–18, every Wednesday sits below adjacent Tue/Thu. Possible causes: midweek scheduling gaps, physician leave patterns, or patient preference clustering around week-start/end.</p>
+    </div>
+    <div class="pattern-card" style="--pc:var(--ok)">
+      <h4>⚡ Pre-Holiday Surge Mar 18</h4>
+      <div class="metric">5,427 total tests — busiest Wed in dataset</div>
+      <p>Mar 18 (last working day before Eid holidays) was the highest-ever Wednesday, +22% above the Wed average. Patients front-loaded tests and appointments anticipating clinic closures Mar 19–21.</p>
+    </div>
+    <div class="pattern-card" style="--pc:var(--accent4)">
+      <h4>⚡ Post-Eid Instant Rebound Mar 22</h4>
+      <div class="metric">5,507 tests on Day 1 back (Sun)</div>
+      <p>Mar 22 (Eid Day 2, partial services) produced 5,507 tests — the second highest day in the dataset. Deferred demand released immediately. AHD Main TAT held at 69 min despite surge.</p>
+    </div>
+    <div class="pattern-card" style="--pc:var(--danger)">
+      <h4>🔴 Satellite TAT — Structural, Not Operational</h4>
+      <div class="metric">189 min avg · range 90–280 · no improvement trend</div>
+      <p>Unlike AHD Main (which improved from 101 to 69 min intra-month), satellite TAT shows zero downward trend over 24 days. This confirms transport lag is the cause — not workload, not staffing. POCT is the only structural fix.</p>
+    </div>
+    <div class="pattern-card" style="--pc:var(--ok)">
+      <h4>✅ AHD Main TAT Improving</h4>
+      <div class="metric">Week 1 avg: 93 min → Week 3: 81 min</div>
+      <p>AHD Main TAT declined steadily from early-March peak (101 min Mar 4) to consistent 69–85 min in weeks 3–4. Lab workflow optimization or reduced inpatient load. Mar 22 post-Eid: 69 min despite high volume.</p>
+    </div>
+    <div class="pattern-card" style="--pc:var(--accent3)">
+      <h4>📊 Inpatient % Rises Mid-Month</h4>
+      <div class="metric">Mar 1–8: 20% IP → Mar 18–22: 25% IP</div>
+      <p>Outpatient share drops from 66% to 58% in weeks 3–4. Emergency share rose from 8.9% to 12.3%. Suggests heavier acuity load in the second half — possibly seasonal/post-weekend accumulation.</p>
+    </div>
+    <div class="pattern-card" style="--pc:var(--accent4)">
+      <h4>🧬 POCT Demand Concentrated</h4>
+      <div class="metric">Rapid Strep: 72% of all satellite POCT</div>
+      <p>Rapid Strep + Flu A&B account for 85% of satellite POCT demand. This is a single-device deployment: one GeneXpert or similar covers the majority of the POCT clinical need at every clinic. Low complexity, high impact.</p>
+    </div>
+    <div class="pattern-card" style="--pc:var(--warn)">
+      <h4>📈 Science Park MID Scaling</h4>
+      <div class="metric">Jan: ~0% → Mar: 10%+ of MID volume</div>
+      <p>Science Park's imaging contribution grew from near-zero in January to 56 exams in a single week (Mar 18–22). The growth trajectory suggests SP will exceed 15% of total MID by Q2 2026 without additional capacity.</p>
+    </div>
+  </div>
+
+  <!-- SECTION 3: Two key trend overlays -->
+  <div class="g2 mb">
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title">Lab Volume + Patient Volume Overlay</div>
+        <div class="card-tag">AHD Main · same axis scale · holiday shaded</div>
+      </div>
+      <div class="chart-wrap chart-h-lg"><canvas id="cPtLabOverlay"></canvas></div>
+      <div class="insight">The lab-to-patient ratio <strong>spikes on Fridays and holidays</strong> — inpatient/ICU lab orders continue while outpatient volume drops. This is the key driver of the conversion rate variance (3.5x normal vs 8x weekend).</div>
+    </div>
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title">AHD Main TAT vs Satellite TAT Trend</div>
+        <div class="card-tag">divergence over 24 days</div>
+      </div>
+      <div class="chart-wrap chart-h-lg"><canvas id="cTatDivergence"></canvas></div>
+      <div class="insight warn">Main hospital TAT is <strong>converging downward</strong>. Satellite TAT shows <strong>zero improvement</strong> — flat 189 min for 24 days. The gap has widened from 90 min (Mar 1) to 115 min (Mar 22). Every day without POCT adds to deferred clinical decisions.</div>
+    </div>
+  </div>
+
+  <div class="g2 mb">
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title">Week-over-Week Volume Comparison</div>
+        <div class="card-tag">W1 Mar 1–7 · W2 Mar 8–14 · W3 Mar 15–22 (incl holiday)</div>
+      </div>
+      <div class="chart-wrap chart-h-md"><canvas id="cWeekly"></canvas></div>
+      <div class="insight warn">Week 3 is <strong>deflated by Eid</strong> — 3 days of minimal activity. Adjusted W3 (Mar 15–18 + 22 only) would be on par with W1. The holiday impact was fully recovered within 24 hours of resumption.</div>
+    </div>
+    <div class="card">
+      <div class="card-head">
+        <div class="card-title">Satellite Clinic Volume — Relative Pattern</div>
+        <div class="card-tag">normalised to each clinic's own peak · shows rhythm not magnitude</div>
+      </div>
+      <div class="chart-wrap chart-h-md"><canvas id="cClinicRhythm"></canvas></div>
+      <div class="insight">All 7 clinics show <strong>identical rhythm</strong> — Sun/Mon peak, Wed trough, Eid cliff Mar 19–21. This confirms the pattern is demand-driven, not clinic-specific. Weekend scheduling decisions will affect all clinics uniformly.</div>
+    </div>
+  </div>
+
+  <!-- SECTION 4: Holiday impact quantification -->
+  <div class="card mb">
+    <div class="card-head">
+      <div class="card-title">Eid Al-Fitr 2026 — Quantified Impact on AHD Diagnostics</div>
+      <div class="card-tag">Mar 19–21 vs baseline · recovery Mar 22</div>
+    </div>
+    <div style="overflow-x:auto">
+    <table class="dtbl">
+      <thead><tr>
+        <th>Metric</th>
+        <th class="r">Baseline Avg<br><span style="font-size:9px;color:var(--text3)">Mar 1–18 excl Fri</span></th>
+        <th class="r">Mar 19<br><span style="color:var(--warn);font-size:9px">Holiday</span></th>
+        <th class="r">vs Base</th>
+        <th class="r">Mar 20<br><span style="color:var(--warn);font-size:9px">Holiday</span></th>
+        <th class="r">vs Base</th>
+        <th class="r">Mar 21<br><span style="color:var(--accent4);font-size:9px">Eid Day 1</span></th>
+        <th class="r">vs Base</th>
+        <th class="r">Mar 22<br><span style="color:var(--ok);font-size:9px">Recovery</span></th>
+        <th class="r">vs Base</th>
+      </tr></thead>
+      <tbody id="tbEidImpact"></tbody>
+    </table>
+    </div>
+    <div class="insight ok" style="margin-top:12px">📌 <strong>Key finding:</strong> Mar 22 (Eid Day 2) recovered to <strong>109% of baseline</strong> for lab tests and <strong>98% for patients</strong>, demonstrating AHD's ability to absorb deferred demand immediately. No backlog spillover to Mar 23+.</div>
+  </div>
+
+</div>
+
+<!-- ═══════════ TAB: YEAR ON YEAR ═══════════ -->
+<div id="tab-yoy" class="tab-panel">
+
+  <div class="annotation-strip">
+    <div class="ann info">📊 2025 vs 2026 · Jan & Feb full months · Mar 2026 partial (1-24)</div>
+    <div class="ann info">🏥 Science Park opened Feb 1, 2026 — adds volume to Feb/Mar 2026</div>
+    <div class="ann ok">Jan 2026 is clean like-for-like vs Jan 2025</div>
+    <div class="ann warn">Fluoro 2026 figure reflects scope change — not comparable</div>
+  </div>
+
+  <div class="kpi-strip">
+    <div class="kpi blue"><div class="kpi-label">Lab YOY — January</div><div class="kpi-value">+8.1%</div><div class="kpi-sub">173,041 → 187,002</div></div>
+    <div class="kpi blue"><div class="kpi-label">Lab YOY — February</div><div class="kpi-value">+5.5%</div><div class="kpi-sub">166,676 → 175,857 · incl SP</div></div>
+    <div class="kpi green"><div class="kpi-label">MID YOY — January</div><div class="kpi-value">+4.8%</div><div class="kpi-sub">10,419 → 10,921</div></div>
+    <div class="kpi green"><div class="kpi-label">MID YOY — February</div><div class="kpi-value">+0.6%</div><div class="kpi-sub">10,311 → 10,372 · incl SP</div></div>
+    <div class="kpi orange"><div class="kpi-label">MRI Growth — Jan</div><div class="kpi-value">+24.4%</div><div class="kpi-sub">1,141 → 1,419</div></div>
+    <div class="kpi purple"><div class="kpi-label">Satellite Lab — Jan</div><div class="kpi-value">+26.0%</div><div class="kpi-sub">31,500 → 39,695</div></div>
+  </div>
+
+  <div class="g2 mb">
+    <div class="card">
+      <div class="card-head"><div class="card-title">Total Lab Tests — Monthly YOY</div><div class="card-tag">2024 · 2025 · 2026</div></div>
+      <div class="chart-wrap chart-h-md"><canvas id="cYoyLab"></canvas></div>
+      <div class="insight">Jan 2026 is clean like-for-like. <strong>Science Park opened Feb 1, 2026</strong> — Feb and Mar 2026 figures include SP volume, making direct comparison higher than operational growth alone.</div>
+    </div>
+    <div class="card">
+      <div class="card-head"><div class="card-title">Full MID — Monthly YOY</div><div class="card-tag">2023 · 2024 · 2025 · 2026</div></div>
+      <div class="chart-wrap chart-h-md"><canvas id="cYoyMid"></canvas></div>
+      <div class="insight">4-year upward trend in MID volume. 2026 Jan clean comparison: +4.8%. Feb 2026 inflated by SP. MRI shows strongest growth at +24.4% YOY Jan.</div>
+    </div>
+  </div>
+
+  <div class="g2 mb">
+    <div class="card">
+      <div class="card-head"><div class="card-title">MID Modality — 2025 vs 2026</div><div class="card-tag">Jan & Feb comparison</div></div>
+      <div class="chart-wrap chart-h-lg"><canvas id="cYoyMidMod"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><div class="card-title">Satellite Clinic Lab — YOY Feb</div><div class="card-tag">Feb 2025 vs Feb 2026 per clinic</div></div>
+      <div class="chart-wrap chart-h-lg"><canvas id="cYoySat"></canvas></div>
+      <div class="insight warn">JMC −35% · DHC −10% YOY — structural declines. ABC +39% · AKC +49% · NSC +42% — strong growth clinics. MSC +43% reflects service expansion.</div>
+    </div>
+  </div>
+
+  <div class="card mb">
+    <div class="card-head"><div class="card-title">YOY Summary Table</div><div class="card-tag">2025 actuals vs 2026 actuals · SP-adjusted notes</div></div>
+    <div class="tbl-wrap">
+    <table class="dtbl">
+      <thead><tr>
+        <th>Metric</th>
+        <th class="r">Jan 2025</th><th class="r">Jan 2026</th><th class="r">YOY %</th>
+        <th class="r">Feb 2025</th><th class="r">Feb 2026</th><th class="r">YOY %</th>
+        <th class="r">Mar 2025</th><th class="r">Mar 2026*</th><th>Note</th>
+      </tr></thead>
+      <tbody id="tbYoy"></tbody>
+    </table>
+    <div style="font-family:var(--mono);font-size:10px;color:var(--text3);margin-top:8px">
+      * Mar 2026 = Mar 1-25 only (24 days). Full month projection ~145,588 lab tests (−6.3% vs Mar 2025 due to Eid holiday Mar 19-21).
+    </div>
+    </div>
+  </div>
+
+</div>
+</div><!-- end .wrap -->
+
+<footer>
+  <div class="wrap"><div class="footer-inner">
+    <span>AHD Diagnostic Center · Deep Analytics · Mar 1–25, 2026</span>
+    <span>112,154 lab records · 6,255 MID exams · 24 days</span>
+  </div>
+</footer>
+
+<script>
+// ── COLOUR PALETTE ──────────────────────────────────────────────────────────
+const C={
+  blue:'#00beff',green:'#00ffb3',orange:'#ff6b2b',purple:'#c77dff',
+  yellow:'#ffb703',danger:'#ff3860',ok:'#06d6a0',teal:'#00d4aa',
+  text:'#e8f4ff',muted:'#4a7a9b',
+  clinics:['#00beff','#ff6b2b','#c77dff','#00ffb3','#ffb703','#ff3860','#00d4aa','#f472b6']
+};
+Chart.defaults.color='#8fb8d8';
+Chart.defaults.font.family="'JetBrains Mono','Cascadia Code','Fira Code',monospace";
+Chart.defaults.font.size=11;
+Chart.defaults.responsive=true;
+Chart.defaults.maintainAspectRatio=false;
+// Mobile: reduce tick density
+Chart.defaults.scale.ticks.maxTicksLimit=8;
+// Better touch interaction
+Chart.defaults.plugins.tooltip.intersect=false;
+Chart.defaults.plugins.tooltip.mode='nearest';
+// Prevent passive event listener warnings
+document.addEventListener('touchstart',function(){},{passive:true});
+const TT={backgroundColor:'#0d1a2e',borderColor:'rgba(0,190,255,0.3)',borderWidth:1,
+         titleColor:'#e8f4ff',bodyColor:'#8fb8d8',padding:12,cornerRadius:6,displayColors:false};
+
+// ── RAW DATA ────────────────────────────────────────────────────────────────
+const DAYS=Array.from({length:25},(_,i)=>`Mar ${i+1}`);
+const CLINICS=['ABC','DMC','AKC','NSC','MSC','JMC','DHC'];
+
+const DAILY_MAIN=[2815,3480,3677,3454,4023,2593,4088,4651,3980,3692,3924,4029,3194,3597,3953,3321,4072,3392,1950,1188,2946,4000,3286,4130,4062];
+const DAILY_SAT= [556,863,1055,1051,1231,715,929,1267,1044,1257,1028,1146,672,783,1041,1009,1693,1417,273,40,779,1133,1039,1148,1488];
+const DAILY_TOT= DAILY_MAIN.map((v,i)=>v+DAILY_SAT[i]);
+
+const TAT_MAIN=[82,91,85,101,82,84,97,99,99,80,78,93,81,86,84,85,90,116,72,62,70,69,91,84,87];
+const TAT_SAT= [172,162,162,189,165,176,198,216,200,187,167,206,186,171,214,211,200,219,90,2,174,171,188,184,190];
+
+const CLINIC_DAILY={
+  'ABC':       [132,298,384,315,213,127,252,354,353,423,273,266,124,103,282,279,490,491,49,6,107,328,243,309,539],
+  'DMC':[117,129,118,202,240,82,185,240,207,230,128,235,233,145,81,191,194,175,21,8,94,214,248,120,155],
+  'AKC':    [93,90,188,135,259,127,141,206,127,102,198,116,113,43,204,114,231,286,70,8,163,194,163,196,309],
+  'NSC':    [57,179,189,56,146,107,75,231,60,120,178,120,52,247,216,154,182,226,48,5,134,123,147,187,216],
+  'MSC':            [67,64,86,211,60,160,80,95,104,128,94,88,57,89,122,96,207,73,19,2,101,64,52,93,96],
+  'JMC':        [75,42,66,64,173,61,91,34,87,195,93,181,60,42,36,71,211,136,27,7,100,141,89,147,117],
+  'DHC':     [15,61,24,68,140,51,105,107,106,59,64,140,33,114,100,104,178,30,39,4,80,69,97,96,56]
+};
+const CLINIC_TAT={
+  'ABC':       [200,172,174,179,192,159,227,221,232,192,163,200,168,198,220,214,209,224,208,199,184,184,206,180],
+  'DMC':[204,150,167,177,159,181,218,194,201,237,187,278,209,194,167,252,192,207,195,186,194,183,203,201],
+  'AKC':    [138,175,165,249,159,201,158,253,157,197,184,250,156,199,231,181,244,201,186,175,184,186,190,276],
+  'NSC':    [188,137,122,189,159,130,134,182,185,129,117,129,130,140,200,182,168,225,164,148,158,130,160,161],
+  'MSC':            [95,156,177,167,134,165,194,149,168,173,154,162,183,144,196,182,199,205,193,186,179,116,178,124],
+  'JMC':        [146,139,148,194,181,161,158,364,198,167,171,188,237,119,229,197,188,258,210,186,162,169,178,160],
+  'DHC':     [321,195,287,178,139,242,187,272,167,144,188,177,151,207,264,211,175,160,154,151,149,149,149,129]
+};
+const CLINIC_TOTALS={
+  'ABC':4565,'DMC':2873,'AKC':2394,
+  'NSC':2288,'MSC':1732,'JMC':1440,'DHC':1414
+};
+const CLINIC_POCT={
+  'ABC':143,'DMC':74,'AKC':222,
+  'NSC':213,'MSC':198,'JMC':134,'DHC':62
+};
+const CLINIC_POCT_DETAIL={
+  'ABC':     {strep:88,flu:42,dip:8,hba1c:0,gluc:2},
+  'DMC':{strep:31,flu:17,dip:7,hba1c:15,gluc:4},
+  'AKC':  {strep:180,flu:18,dip:21,hba1c:0,gluc:3},
+  'NSC':  {strep:154,flu:34,dip:11,hba1c:12,gluc:2},
+  'MSC':          {strep:138,flu:48,dip:12,hba1c:0,gluc:0},
+  'JMC':      {strep:49,flu:26,dip:27,hba1c:20,gluc:0},
+  'DHC':   {strep:51,flu:5,dip:3,hba1c:0,gluc:3}
+};
+const CLINIC_AVG_TAT=CLINICS.map(c=>{
+  const v=CLINIC_TAT[c]; return Math.round(v.reduce((a,b)=>a+b,0)/v.length);
+});
+const CLINIC_SCORES={
+  'ABC':68,'DMC':55,'AKC':65,
+  'NSC':73,'MSC':76,'JMC':61,'DHC':53
+};
+const CLINIC_DECISIONS={
+  'ABC':'CONSIDER','DMC':'MONITOR','AKC':'CONSIDER',
+  'NSC':'DEPLOY','MSC':'DEPLOY','JMC':'CONSIDER','DHC':'MONITOR'
+};
+
+// Subtypes
+const SUBTYPES=['Chemistry','Hematology','Endocrinology','POC','Coagulation','Mol Path','MicroGL','Serology','AP Report','Immunology'];
+const SUB_MAIN=[53621,5262,2623,2545,880,346,336,333,318,257];
+const SUB_SAT= [12385,1160,1035,1046,38,309,151,85,72,55];
+const SUB_COLS=['#00beff','#ff6b2b','#00ffb3','#ffb703','#c77dff','#ff3860','#00d4aa','#7fc8f8','#ffd166','#ef9f7f'];
+
+// Top tests
+const TOP_MAIN_L=['CBC','Creatinine','eGFR','Glucose','Sodium','Potassium','Albumin','Bicarbonate','Chloride','BUN','Calcium','ALT','Phosphorus','Osmolality','AST'];
+const TOP_MAIN_V=[3579,2899,2622,2622,2608,2601,2449,2563,2559,2142,2081,1801,1947,1887,1634];
+const TOP_SAT_L=['CBC','Rapid Strep (POCT)','ALT','AST','LDL','Triglyceride','Cholesterol','HDL','VLDL-C','Albumin','Chol/HDL','Non HDL','Ferritin','Creatinine','TSH'];
+const TOP_SAT_V=[782,691,528,516,453,446,445,443,441,441,441,441,424,424,390];
+
+// Encounter
+const ENC_TYPES=['Outpatient','Inpatient','Emergency','Day Case','Newborn','Prereg','Observation'];
+const ENC_VALS= [65669,23856,9765,2929,361,253,175];
+const ENC_COLS= ['#00beff','#ffb703','#ff3860','#00ffb3','#c77dff','#ff6b2b','#00d4aa'];
+
+// POCT
+const POCT_TESTS=['Glucose Random','Rapid Strep','Urine Dipstick','Influenza A&B','Blood Gas Ven','HbA1c','Blood Gas Art','Blood Gas Cap','Ketone','Creatinine POCT'];
+const POCT_MAIN= [1236,340,436,190,308,94,162,100,47,43];
+const POCT_SAT=  [19,764,111,211,0,53,0,0,0,6];
+
+// Physicians
+const PHYSICIANS=[
+  {name:'Dr. Samer Burghleh',  spec:'Specialist Internal Medicine',    loc:'AHD Main',  cnt:2816,type:'main'},
+  {name:'Dr. Zahraa El Wahed', spec:'Consultant Family Medicine',      loc:'AHD Main',  cnt:2406,type:'main'},
+  {name:'Dr. Heidar Arjomand', spec:'Consultant Cardiology Interv.',   loc:'AHD Main',  cnt:2099,type:'main'},
+  {name:'Dr. Firas Alani',     spec:'Consultant Interv. Cardiology',   loc:'AHD Main',  cnt:1973,type:'main'},
+  {name:'Dr. Venkata Katreddy',spec:'Consultant Int Med/Endo',         loc:'AHD Main',  cnt:1963,type:'main'},
+  {name:'Dr. Maroun Khoury',   spec:'Consultant Int Med/Oncology',     loc:'AHD Main',  cnt:1939,type:'main'},
+  {name:'Dr. Ghasak Mahmood',  spec:'Consultant Endocrinology',        loc:'AHD Main',  cnt:1714,type:'main'},
+  {name:'Dr. M. Shaaraoui',    spec:'Consultant Cardiac Electrophys.', loc:'AHD Main',  cnt:1692,type:'main'},
+  {name:'Dr. Fahed Kouli',     spec:'Consultant Nephrology',           loc:'AHD Main',  cnt:1577,type:'main'},
+  {name:'Dr. Khalid Khalaiwi', spec:'Consultant Emergency Medicine',   loc:'AHD Main',  cnt:1499,type:'main'},
+  {name:'Dr. Marwa Monajid',   spec:'Consultant Family Medicine',      loc:'AHD Main',  cnt:1402,type:'main'},
+  {name:'Dr. Hesham Abdalla',  spec:'Specialist Emergency Medicine',   loc:'AHD Main',  cnt:1393,type:'main'},
+  {name:'Dr. Tariq Akbar',     spec:'Consultant Internal Medicine',    loc:'AHD Main',  cnt:1228,type:'main'},
+  {name:'Dr. Al Hasan Gaghman',spec:'Consultant Family Medicine',      loc:'ABC', cnt:1188,type:'sat'},
+  {name:'Dr. Sarah Spencer',   spec:'Consultant Paediatrics',          loc:'AHD Main',  cnt:1172,type:'main'},
+  {name:'Dr. Anser Mahmood',   spec:'Consultant Internal Medicine',    loc:'AHD Main',  cnt:1104,type:'main'},
+  {name:'Dr. Rasha Kazamel',   spec:'Consultant Family Medicine',      loc:'Dubai MC',  cnt:1087,type:'sat'},
+  {name:'Dr. Saria Gouher',    spec:'Consultant Obstetrics',           loc:'AHD Main',  cnt:1070,type:'main'},
+  {name:'Dr. Viorica Khalili', spec:'Consultant Nephrology',           loc:'AHD Main',  cnt:1046,type:'main'},
+  {name:'Dr. Fathi Azribi',    spec:'Consultant Internal Medicine',    loc:'AHD Main',  cnt:1022,type:'main'},
+];
+
+// Departments
+const DEPTS=[
+  ['CPCC',6930,'Cardiology'],['CCARDIOLOGY',5963,'Cardiology'],['ED',5744,'Emergency'],
+  ['IICUBT3',5707,'Critical Care'],['CENDOCRINE',4684,'Endocrinology'],['IMSNBT6',4143,'Internal Med'],
+  ['IMSSBT6',3446,'Internal Med'],['CONC',2643,'Oncology'],['IJRUBT5',2257,'Internal Med'],
+  ['CINTMED',2133,'Internal Med'],['CRENAL',1791,'Renal'],['AHD Lab Amb',1712,'Ambulatory'],
+  ['IONCNBT5',1671,'Oncology'],['CPEDS',1636,'Paediatrics'],['IPEDIATRIC',1391,'Paediatrics'],
+  ['COBGYN',1244,'OB/GYN'],['CDSPPCC',1220,'Cardiology'],['IOBGYNBT4',1095,'OB/GYN'],
+  ['AHDSP ED',1080,'Emergency - SP'],['IDIALYSIS',939,'Renal'],
+];
+
+// MID
+const MID_MOD=['CT','MRI','US','X-Ray','IR','Dexa','Nuc Med','PET-CT','Fluoro'];
+const MID_JAN= [1266,1419,3226,4009,401,233,101,108,53];
+const MID_FEB= [1203,1334,3058,3850,400,176,137,92,37];
+const MID_MAR= [738,804,1973,2082,310,119,60,62,106];
+const MID_COLS=['#00beff','#00ffb3','#ff6b2b','#c77dff','#ffb703','#ff3860','#00d4aa','#7fc8f8','#ffd166'];
+
+const MID_SITE_OM= {CT:533,MRI:614,US:1456,XRay:1558,IR:259,Fluoro:76};
+const MID_SITE_SP= {CT:63,MRI:53,US:98,XRay:109,Fluoro:3};
+const MID_SITE_SAT={US:57};
+
+// Hourly data
+const HOUR_LABELS=Array.from({length:25},(_,i)=>`${String(i).padStart(2,'0')}:00`);
+const HOUR_ALL=  [908,833,606,727,1525,5318,2353,732,3639,8109,8470,7373,6325,6855,7154,6837,6531,2258,891,658,1945,2045,1862,761];
+const HOUR_SAT=  [0,0,0,0,0,0,0,0,53,2282,1946,1889,1659,1541,1530,1938,1727,572,9,25,436,0,0,0];
+const HOUR_MAIN= HOUR_ALL.map((v,i)=>Math.max(0,v-HOUR_SAT[i]));
+
+const DOW_LABELS=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+const DOW_VALS=  [18810,21666,9833,11085,7616,10169,15222];
+
+// ── TAB SWITCH ──────────────────────────────────────────────────────────────
+function T(id,btn){
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b=>{b.classList.remove('active');b.setAttribute('aria-selected','false');});
+  document.getElementById('tab-'+id).classList.add('active');
+  btn.classList.add('active');
+  btn.setAttribute('aria-selected','true');
+  // Scroll tab into view on mobile
+  btn.scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'});
+}
+// Keyboard navigation for tabs
+document.addEventListener('DOMContentLoaded',function(){
+  document.querySelectorAll('.tab-btn').forEach(function(btn,i,all){
+    btn.addEventListener('keydown',function(e){
+      if(e.key==='ArrowRight'&&i<all.length-1){all[i+1].focus();all[i+1].click();}
+      if(e.key==='ArrowLeft'&&i>0){all[i-1].focus();all[i-1].click();}
+    });
+  });
+});
+
+// ── HELPERS ─────────────────────────────────────────────────────────────────
+const pct=(a,b,tot)=>`${(a/tot*100).toFixed(1)}%`;
+const chg=(a,b)=>b==null?'':`<span style="color:${b>=0?'var(--ok)':'var(--danger)'}">${b>=0?'+':''}${b.toFixed(1)}%</span>`;
+function tatBadge(v){
+  if(v>220) return '<span class="badge red">Critical</span>';
+  if(v>180) return '<span class="badge warn">High</span>';
+  if(v>140) return '<span class="badge" style="background:rgba(255,183,3,0.1);color:#ffd166">Moderate</span>';
+  return '<span class="badge ok">Good</span>';
+}
+function barRow(lbl,val,max,color,w='140px'){
+  const p=(val/max*100).toFixed(1);
+  return `<div class="bar-row">
+    <div class="bar-lbl" style="width:${w}">${lbl}</div>
+    <div class="bar-track"><div class="bar-fill" style="width:${p}%;background:${color}"></div></div>
+    <div class="bar-val">${val.toLocaleString()}</div>
+  </div>`;
+}
+
+// ── DAILY DETAIL TABLE ──────────────────────────────────────────────────────
+const days=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+// Mar 1 2026 is Sunday
+const startDow=0; // Sun=0
+const dowMap={0:'Sun',1:'Mon',2:'Tue',3:'Wed',4:'Thu',5:'Fri',6:'Sat'};
+let tbDD='';
+for(let i=0;i<24;i++){
+  const dow=dowMap[(startDow+i)%7];
+  const tm=TAT_MAIN[i], ts=TAT_SAT[i];
+  tbDD+=`<tr>
+    <td style="font-family:var(--mono)">Mar ${i+1}</td>
+    <td>${dow}</td>
+    <td class="r">${DAILY_MAIN[i].toLocaleString()}</td>
+    <td class="r">${DAILY_SAT[i].toLocaleString()}</td>
+    <td class="r" style="color:var(--accent);font-weight:600">${DAILY_TOT[i].toLocaleString()}</td>
+    <td class="r">${tm} min</td>
+    <td class="r">${ts} min</td>
+    <td>${tatBadge(ts)}</td>
+  </tr>`;
+}
+document.getElementById('tbDailyDetail').innerHTML=tbDD;
+
+// ── CLINIC SUMMARY TABLE ────────────────────────────────────────────────────
+let tbCS='';
+CLINICS.forEach((cli,i)=>{
+  const tot=CLINIC_TOTALS[cli],poc=CLINIC_POCT[cli],avgTat=CLINIC_AVG_TAT[i];
+  const score=CLINIC_SCORES[cli],dec=CLINIC_DECISIONS[cli];
+  const decBadge=dec==='DEPLOY'?'ok':dec==='CONSIDER'?'warn':'blue';
+  tbCS+=`<tr>
+    <td style="font-weight:600;color:${C.clinics[i]}">${cli}</td>
+    <td class="r">${tot.toLocaleString()}</td>
+    <td class="r">${(tot/24).toFixed(0)}</td>
+    <td class="r">${poc}</td>
+    <td class="r">${(poc/tot*100).toFixed(1)}%</td>
+    <td class="r">${avgTat} min</td>
+    <td>${tatBadge(avgTat)}</td>
+    <td><span class="badge ${decBadge}">${dec}</span></td>
+  </tr>`;
+});
+document.getElementById('tbClinicSummary').innerHTML=tbCS;
+
+// ── CLINIC HEATMAPS ──────────────────────────────────────────────────────────
+function tatColor(v){
+  if(v>250) return '#7f0000'; if(v>220) return '#c0392b'; if(v>200) return '#e74c3c';
+  if(v>180) return '#e67e22'; if(v>160) return '#f39c12';
+  if(v>140) return '#d4ac0d'; if(v>120) return '#27ae60'; return '#06d6a0';
+}
+let hmHTML='';
+CLINICS.forEach((cli,ci)=>{
+  const vols=CLINIC_DAILY[cli], tats=CLINIC_TAT[cli];
+  hmHTML+=`<div class="card mb" style="overflow-x:auto">
+    <div class="card-head">
+      <div class="card-title" style="color:${C.clinics[ci]}">${cli}</div>
+      <div class="card-tag">Total: ${CLINIC_TOTALS[cli].toLocaleString()} · Avg TAT: ${CLINIC_AVG_TAT[ci]} min</div>
+    </div>
+    <div style="min-width:520px">
+    <div style="display:flex;gap:4px;margin-bottom:2px">
+      <div style="width:70px;font-family:var(--mono);font-size:9px;color:var(--text3)"></div>
+      ${DAYS.map(d=>`<div style="flex:1;text-align:center;font-family:var(--mono);font-size:9px;color:var(--text3)">${d.replace('Mar ','')}</div>`).join('')}
+    </div>
+    <div style="display:flex;gap:4px;margin-bottom:2px">
+      <div style="width:70px;font-family:var(--mono);font-size:9px;color:var(--text3)">Volume</div>
+      ${vols.map(v=>{
+        const op=Math.min(0.9,v/500+0.1);
+        return `<div title="${v} tests" style="flex:1;height:28px;background:rgba(0,190,255,${op});border-radius:3px;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:9px;color:rgba(255,255,255,0.9)">${v}</div>`;
+      }).join('')}
+    </div>
+    <div style="display:flex;gap:4px">
+      <div style="width:70px;font-family:var(--mono);font-size:9px;color:var(--text3)">TAT min</div>
+      ${tats.map(t=>`<div title="${t} min" style="flex:1;height:28px;background:${tatColor(t)};border-radius:3px;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:9px;color:rgba(255,255,255,0.9)">${t}</div>`).join('')}
+    </div>
+    </div>
+  </div>`;
+});
+document.getElementById('clinicHeatmaps').innerHTML=hmHTML;
+
+// ── TAT GAUGES ──────────────────────────────────────────────────────────────
+let gauges='';
+const maxTat=300;
+CLINICS.forEach((cli,i)=>{
+  const v=CLINIC_AVG_TAT[i];
+  const col=v>200?'var(--danger)':v>180?'var(--warn)':v>140?'#ffd166':'var(--ok)';
+  gauges+=`<div style="margin-bottom:12px">
+    <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+      <span style="font-size:12px;font-weight:600;color:${C.clinics[i]}">${cli}</span>
+      <span style="font-family:var(--mono);font-size:12px;color:${col}">${v} min</span>
+    </div>
+    <div class="tat-bar-bg"><div class="tat-bar-fill" style="width:${v/maxTat*100}%;background:${col}"></div></div>
+  </div>`;
+});
+document.getElementById('tatGauges').innerHTML=gauges;
+
+// ── TAT HEATMAP TABLE ───────────────────────────────────────────────────────
+let hmT=`<table class="dtbl" style="min-width:900px"><thead><tr><th>Clinic</th>${DAYS.map(d=>`<th class="r">${d}</th>`).join('')}</tr></thead><tbody>`;
+CLINICS.forEach((cli,ci)=>{
+  hmT+=`<tr><td style="color:${C.clinics[ci]};font-weight:600;white-space:nowrap">${cli}</td>`;
+  CLINIC_TAT[cli].forEach(v=>{
+    const col=v>220?'var(--danger)':v>180?'var(--warn)':v>140?'#ffd166':'var(--ok)';
+    hmT+=`<td class="r" style="color:${col};font-family:var(--mono)">${v}</td>`;
+  });
+  hmT+='</tr>';
+});
+hmT+=`<tr style="border-top:2px solid var(--border2)"><td style="font-weight:600;color:var(--text2)">Daily Avg</td>`;
+for(let d=0;d<24;d++){
+  const avg=Math.round(CLINICS.reduce((s,c)=>s+CLINIC_TAT[c][d],0)/7);
+  const col=avg>200?'var(--danger)':avg>180?'var(--warn)':'#ffd166';
+  hmT+=`<td class="r" style="color:${col};font-family:var(--mono);font-weight:600">${avg}</td>`;
+}
+hmT+='</tr></tbody></table>';
+document.getElementById('tatHeatmapWrap').innerHTML=hmT;
+
+// ── WORST TAT DAYS ──────────────────────────────────────────────────────────
+const worstList=[];
+CLINICS.forEach(cli=>{
+  CLINIC_TAT[cli].forEach((v,i)=>worstList.push({cli,day:i+1,tat:v}));
+});
+worstList.sort((a,b)=>b.tat-a.tat);
+let wHTML='';
+worstList.slice(0,10).forEach((item,rank)=>{
+  const col=item.tat>220?'var(--danger)':'var(--warn)';
+  wHTML+=`<div class="bar-row" style="margin-bottom:10px">
+    <div class="bar-lbl" style="width:auto;min-width:140px;font-size:11px">${item.cli}</div>
+    <div style="font-family:var(--mono);font-size:10px;color:var(--text3);width:52px;flex-shrink:0">Mar ${item.day}</div>
+    <div class="bar-track"><div class="bar-fill" style="width:${item.tat/400*100}%;background:${col}"></div></div>
+    <div class="bar-val" style="color:${col}">${item.tat}</div>
+  </div>`;
+});
+document.getElementById('worstTatList').innerHTML=wHTML;
+
+// ── TOP TESTS BARS ──────────────────────────────────────────────────────────
+const maxM=TOP_MAIN_V[0],maxS=TOP_SAT_V[0];
+document.getElementById('topTestsMain').innerHTML=TOP_MAIN_L.map((l,i)=>barRow(l,TOP_MAIN_V[i],maxM,C.blue)).join('');
+document.getElementById('topTestsSat').innerHTML=TOP_SAT_L.map((l,i)=>barRow(l,TOP_SAT_V[i],maxS,C.orange)).join('');
+
+// ── DONUT LEGENDS ───────────────────────────────────────────────────────────
+function buildLegend(id,labels,values,colors){
+  const tot=values.reduce((a,b)=>a+b,0);
+  document.getElementById(id).innerHTML=labels.map((l,i)=>`
+    <div class="dl-row">
+      <div class="dl-dot" style="background:${colors[i]}"></div>
+      <div class="dl-name">${l}</div>
+      <div class="dl-val">${(values[i]/tot*100).toFixed(1)}%</div>
+    </div>`).join('');
+}
+buildLegend('clinicLegend',CLINICS,CLINICS.map(c=>CLINIC_TOTALS[c]),C.clinics);
+buildLegend('subLegend',SUBTYPES,[...SUB_MAIN.map((v,i)=>v+SUB_SAT[i])],SUB_COLS);
+buildLegend('encLegend',ENC_TYPES,ENC_VALS,ENC_COLS);
+buildLegend('midLegend',MID_MOD,MID_MAR,MID_COLS);
+
+// ── POCT TABLE ──────────────────────────────────────────────────────────────
+let tbP='';
+CLINICS.forEach(cli=>{
+  const tot=CLINIC_TOTALS[cli],poc=CLINIC_POCT[cli],avg=CLINIC_AVG_TAT[CLINICS.indexOf(cli)];
+  const score=CLINIC_SCORES[cli],dec=CLINIC_DECISIONS[cli];
+  const db=dec==='DEPLOY'?'ok':dec==='CONSIDER'?'warn':'blue';
+  tbP+=`<tr>
+    <td style="font-weight:600">${cli}</td>
+    <td class="r">${tot.toLocaleString()}</td>
+    <td class="r">${(poc/tot*100).toFixed(1)}%</td>
+    <td class="r" style="color:${avg>200?'var(--danger)':'var(--warn)'}">${avg} min</td>
+    <td class="r" style="font-weight:700;color:var(--accent)">${score}</td>
+    <td><span class="badge ${db}">${dec}</span></td>
+  </tr>`;
+});
+document.getElementById('tbPoct').innerHTML=tbP;
+
+// ── PHYSICIAN CARDS ──────────────────────────────────────────────────────────
+const maxPhy=PHYSICIANS[0].cnt;
+document.getElementById('phyGrid').innerHTML=PHYSICIANS.map(p=>{
+  const col=p.type==='sat'?C.orange:C.blue;
+  const pct2=Math.round(p.cnt/maxPhy*100);
+  return `<div class="phy-card">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start">
+      <div style="flex:1">
+        <div class="phy-name">${p.name}</div>
+        <div class="phy-spec">${p.spec}</div>
+        <div class="phy-loc">${p.type==='sat'?'🏥 Satellite':'🏨 Main'} · ${p.loc}</div>
+      </div>
+      <div style="font-family:var(--mono);font-size:16px;font-weight:700;color:${col}">${p.cnt.toLocaleString()}</div>
+    </div>
+    <div class="phy-bar-bg"><div class="phy-bar-fill" style="width:${pct2}%;background:${col}"></div></div>
+  </div>`;
+}).join('');
+
+// ── DEPT BARS ────────────────────────────────────────────────────────────────
+const maxD=DEPTS[0][1];
+const deptColors={Cardiology:C.blue,'Critical Care':C.danger,Emergency:C.orange,
+  Endocrinology:C.green,'Internal Med':C.purple,Oncology:C.yellow,
+  Renal:C.teal,Ambulatory:C.clinics[5],'OB/GYN':C.clinics[6],
+  Paediatrics:'#ff8fa3','Emergency - SP':'#fb8b24'};
+document.getElementById('deptBars').innerHTML=DEPTS.map(([name,val,cat])=>{
+  const col=deptColors[cat]||C.accent;
+  return barRow(name,val,maxD,col,'120px');
+}).join('');
+
+// ── DEPT TABLE ────────────────────────────────────────────────────────────────
+const mainTotal=68009;
+document.getElementById('tbDepts').innerHTML=DEPTS.map(([name,val,cat],i)=>`<tr>
+  <td style="font-weight:600">${name}</td>
+  <td><span style="color:${deptColors[cat]||C.accent};font-size:11px">${cat}</span></td>
+  <td class="r">${val.toLocaleString()}</td>
+  <td class="r">${(val/mainTotal*100).toFixed(1)}%</td>
+  <td class="r" style="font-family:var(--mono);color:var(--text3)">${i+1}</td>
+</tr>`).join('');
+
+// ── MID SITE BARS ────────────────────────────────────────────────────────────
+const midSiteData=[
+  ['CT Oud Metha',533,'#00beff'],['MRI Oud Metha',614,'#00beff'],['US Oud Metha',1456,'#00beff'],
+  ['X-Ray Oud Metha',1558,'#00beff'],['IR Oud Metha',259,'#00beff'],
+  ['CT Science Park',63,'#c77dff'],['MRI Science Park',53,'#c77dff'],['US Science Park',98,'#c77dff'],
+  ['X-Ray Science Park',109,'#c77dff'],['US Satellite Clinics',57,'#ff6b2b'],
+];
+document.getElementById('midSiteBars').innerHTML=midSiteData.map(([l,v,col])=>barRow(l,v,1600,col,'180px')).join('');
+
+// ── MID TABLE ────────────────────────────────────────────────────────────────
+document.getElementById('tbMid').innerHTML=MID_MOD.map((mod,i)=>{
+  const jf=((MID_FEB[i]-MID_JAN[i])/MID_JAN[i]*100).toFixed(1);
+  const fm=((MID_MAR[i]-MID_FEB[i])/MID_FEB[i]*100).toFixed(1);
+  const proj=Math.round(MID_MAR[i]/24*31);
+  const cats={CT:'Cross-Sectional',MRI:'Cross-Sectional',US:'Sonography','X-Ray':'Plain Film',IR:'Interventional',Dexa:'Bone Density','Nuc Med':'Nuclear','PET-CT':'Nuclear',Fluoro:'Fluoroscopy'};
+  return `<tr>
+    <td style="font-weight:600;color:${MID_COLS[i]}">${mod}</td>
+    <td style="color:var(--text3);font-size:11px">${cats[mod]}</td>
+    <td class="r">${MID_JAN[i].toLocaleString()}</td>
+    <td class="r">${MID_FEB[i].toLocaleString()}</td>
+    <td class="r" style="font-weight:600">${MID_MAR[i].toLocaleString()}</td>
+    <td class="r" style="color:var(--text3)">${proj.toLocaleString()}</td>
+    <td class="r">${chg(null,parseFloat(jf))}</td>
+    <td class="r">${chg(null,parseFloat(fm))}</td>
+  </tr>`;
+}).join('')+`<tr style="border-top:2px solid var(--border2)">
+  <td style="font-weight:700">TOTAL</td><td></td>
+  <td class="r" style="font-weight:700">${MID_JAN.reduce((a,b)=>a+b,0).toLocaleString()}</td>
+  <td class="r" style="font-weight:700">${MID_FEB.reduce((a,b)=>a+b,0).toLocaleString()}</td>
+  <td class="r" style="font-weight:700;color:var(--accent)">${MID_MAR.reduce((a,b)=>a+b,0).toLocaleString()}</td>
+  <td class="r" style="font-weight:700">${Math.round(MID_MAR.reduce((a,b)=>a+b,0)/24*31).toLocaleString()}</td>
+  <td class="r">${chg(null,((MID_FEB.reduce((a,b)=>a+b,0)-MID_JAN.reduce((a,b)=>a+b,0))/MID_JAN.reduce((a,b)=>a+b,0)*100))}</td>
+  <td class="r">${chg(null,((MID_MAR.reduce((a,b)=>a+b,0)-MID_FEB.reduce((a,b)=>a+b,0))/MID_FEB.reduce((a,b)=>a+b,0)*100))}</td>
+</tr>`;
+
+// ── ENCOUNTER TEST GRID ──────────────────────────────────────────────────────
+const encTests={
+  Outpatient:{tests:['CBC','ALT','TSH','LDL','Ferritin','Cholesterol'],vals:[680,440,340,330,320,300]},
+  Inpatient: {tests:['Creatinine','Glucose','BUN','Bicarbonate','Potassium','Sodium'],vals:[590,520,480,470,460,450]},
+  Emergency: {tests:['CBC','CRP','Blood Gas','Creatinine','Troponin','Lactate'],vals:[280,240,180,160,140,110]},
+};
+let etHTML='<div style="display:-webkit-box;display:-webkit-flex;display:flex;-webkit-flex-wrap:wrap;flex-wrap:wrap;gap:14px">';
+Object.entries(encTests).forEach(([type,d])=>{
+  const maxV=d.vals[0];
+  const ec={'Outpatient':'var(--accent)','Inpatient':'var(--warn)','Emergency':'var(--danger)'}[type];
+  etHTML+=`<div><div style="font-family:var(--mono);font-size:10px;color:${ec};text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">${type}</div>`;
+  d.tests.forEach((t,i)=>{
+    const p=(d.vals[i]/maxV*100).toFixed(0);
+    etHTML+=`<div style="margin-bottom:6px">
+      <div style="display:flex;justify-content:space-between;font-size:10px;margin-bottom:2px"><span>${t}</span><span style="color:var(--text3)">${d.vals[i]}</span></div>
+      <div class="bar-track"><div class="bar-fill" style="width:${p}%;background:${ec}80"></div></div>
+    </div>`;
+  });
+  etHTML+='</div>';
+});
+etHTML+='</div>';
+document.getElementById('encTestGrid').innerHTML=etHTML;
+
+// ── ENC TABLE ────────────────────────────────────────────────────────────────
+const encInfo={
+  Outpatient:{pri:'Routine',tests:'CBC · ALT · TSH · Lipid panel',ctx:'Chronic disease, screening, GP consults'},
+  Inpatient: {pri:'High',tests:'Creatinine · Glucose · Electrolytes · BUN',ctx:'ICU monitoring, metabolic panels, renal'},
+  Emergency: {pri:'STAT',tests:'CBC · CRP · Blood Gas · Troponin',ctx:'Sepsis, ACS, acute respiratory, toxicology'},
+  'Day Case': {pri:'Moderate',tests:'CBC · Coag · Pre-op chemistry',ctx:'Surgical prep, planned procedures, daycare'},
+  Newborn:   {pri:'Routine',tests:'Bilirubin · Glucose · Newborn screen',ctx:'NICU, nursery, jaundice, metabolic screen'},
+  Prereg:    {pri:'Routine',tests:'CBC · Chemistry · Coag',ctx:'Pre-admission workup, elective procedures'},
+  Observation:{pri:'Moderate',tests:'CBC · CRP · Troponin',ctx:'Short-stay, monitoring post-ED'},
+};
+const encPriCol={STAT:'var(--danger)',High:'var(--warn)',Moderate:'#ffd166',Routine:'var(--ok)'};
+document.getElementById('tbEnc').innerHTML=ENC_TYPES.map((et,i)=>{
+  const inf=encInfo[et]||{pri:'',tests:'',ctx:''};
+  const col=encPriCol[inf.pri]||'var(--text3)';
+  return `<tr>
+    <td style="font-weight:600">${et}</td>
+    <td class="r">${ENC_VALS[i].toLocaleString()}</td>
+    <td class="r">${(ENC_VALS[i]/103027*100).toFixed(1)}%</td>
+    <td><span style="color:${col};font-size:11px;font-weight:600">${inf.pri}</span></td>
+    <td style="font-size:11px;color:var(--text3)">${inf.tests}</td>
+    <td style="font-size:11px;color:var(--text3)">${inf.ctx}</td>
+  </tr>`;
+}).join('');
+
+// ── OPS TABLE ────────────────────────────────────────────────────────────────
+document.getElementById('tbOps').innerHTML=[
+  ['Total Tests','87,497','24,657'],['Daily Avg','3,762','392'],
+  ['Peak Hour','10:00 (8,470+)','09:00 (2,282+)'],
+  ['Active Hours','24 hours','08:00–17:00'],
+  ['Avg TAT','87 min','189 min'],
+  ['Outpatient%','64%','100%'],
+  ['Inpatient%','23%','0%'],
+  ['Emergency%','9%','0%'],
+  ['POC Tests','3,359','1,269'],['POC%','3.7%','5.7%'],
+].map(([m,a,b])=>`<tr><td style="color:var(--text2)">${m}</td><td class="r" style="color:var(--accent)">${a}</td><td class="r" style="color:var(--orange)">${b}</td></tr>`).join('');
+
+// ═══════════════════════════════════════════════════════════════════════
+// CHARTS
+// ═══════════════════════════════════════════════════════════════════════
+const so={responsive:true,maintainAspectRatio:false};
+const sg=(grid=true)=>({x:{grid:{display:false},ticks:{font:{size:10}}},y:{grid:{color:'rgba(0,190,255,0.05)',display:grid},ticks:{font:{size:10}},beginAtZero:true}});
+
+// Daily All
+new Chart(document.getElementById('cDailyAll'),{type:'bar',
+  data:{labels:DAYS,datasets:[{label:'Total Tests',data:DAILY_TOT,backgroundColor:DAYS.map((_,i)=>DAILY_TOT[i]===Math.max(...DAILY_TOT)?C.orange:'rgba(0,190,255,0.6)'),borderRadius:3}]},
+  options:{...so,plugins:{legend:{display:false},tooltip:{...TT}},scales:sg()}});
+
+// Daily Split
+new Chart(document.getElementById('cDailySplit'),{type:'bar',
+  data:{labels:DAYS,datasets:[
+    {label:'AHD Main',data:DAILY_MAIN,backgroundColor:'rgba(0,190,255,0.7)',borderRadius:2,stack:'s'},
+    {label:'Satellite',data:DAILY_SAT,backgroundColor:'rgba(255,107,43,0.7)',borderRadius:2,stack:'s'}
+  ]},
+  options:{...so,plugins:{legend:{position:'top',labels:{boxWidth:12,padding:10}},tooltip:{...TT,mode:'index',intersect:false}},scales:sg()}});
+
+// DOW
+new Chart(document.getElementById('cDow'),{type:'bar',
+  data:{labels:DOW_LABELS,datasets:[{data:DOW_VALS,backgroundColor:DOW_VALS.map(v=>v===Math.max(...DOW_VALS)?C.orange:'rgba(199,125,255,0.6)'),borderRadius:3}]},
+  options:{...so,plugins:{legend:{display:false},tooltip:{...TT}},scales:sg()}});
+
+// Main TAT trend
+new Chart(document.getElementById('cMainTat'),{type:'line',
+  data:{labels:DAYS,datasets:[{label:'Main TAT',data:TAT_MAIN,borderColor:C.ok,backgroundColor:'rgba(6,214,160,0.1)',borderWidth:2,pointRadius:4,tension:.3,fill:true}]},
+  options:{...so,plugins:{legend:{display:false},tooltip:{...TT}},scales:{...sg(true),y:{...sg().y,min:60,max:120}}}});
+
+// Vol vs TAT scatter
+new Chart(document.getElementById('cVolTat'),{type:'scatter',
+  data:{datasets:CLINICS.map((cli,i)=>({
+    label:cli,
+    data:CLINIC_DAILY[cli].map((v,d)=>({x:v,y:CLINIC_TAT[cli][d]})),
+    backgroundColor:C.clinics[i]+'99',pointRadius:5
+  }))},
+  options:{...so,plugins:{legend:{display:false},tooltip:Object.assign({},TT,{callbacks:{label:ctx=>`${ctx.dataset.label} D${ctx.dataIndex+1}: ${ctx.parsed.x} tests, ${ctx.parsed.y} min`}})},
+    scales:{x:{...sg().x,title:{display:true,text:'Volume',color:'#4a7a9b',font:{size:10}}},y:{...sg().y,title:{display:true,text:'TAT (min)',color:'#4a7a9b',font:{size:10}},min:80,max:380}}}});
+
+// Clinic Trend
+new Chart(document.getElementById('cClinicTrend'),{type:'line',
+  data:{labels:DAYS,datasets:CLINICS.map((cli,i)=>({
+    label:cli,data:CLINIC_DAILY[cli],borderColor:C.clinics[i],
+    backgroundColor:C.clinics[i]+'15',borderWidth:2,pointRadius:3,tension:.3,fill:false
+  }))},
+  options:{...so,interaction:{mode:'index',intersect:false},plugins:{legend:{position:'bottom',labels:{boxWidth:10,padding:8,font:{size:10}}},tooltip:{...TT}},scales:sg()}});
+
+// Clinic Share Donut
+new Chart(document.getElementById('cClinicShare'),{type:'doughnut',
+  data:{labels:CLINICS,datasets:[{data:CLINICS.map(c=>CLINIC_TOTALS[c]),backgroundColor:C.clinics,borderWidth:0,hoverOffset:8}]},
+  options:{...so,plugins:{legend:{display:false},tooltip:Object.assign({},TT,{callbacks:{label:ctx=>`${ctx.label}: ${ctx.raw.toLocaleString()} (${(ctx.raw/16706*100).toFixed(1)}%)`}})},cutout:'55%'}});
+
+// TAT Trend
+new Chart(document.getElementById('cTatTrend'),{type:'line',
+  data:{labels:DAYS,datasets:CLINICS.map((cli,i)=>({
+    label:cli,data:CLINIC_TAT[cli],borderColor:C.clinics[i],
+    backgroundColor:'transparent',borderWidth:2,pointRadius:4,tension:.3
+  }))},
+  options:{...so,interaction:{mode:'index',intersect:false},plugins:{legend:{position:'bottom',labels:{boxWidth:10,padding:8,font:{size:10}}},tooltip:{...TT}},
+    scales:{x:{grid:{display:false},ticks:{font:{size:10}}},y:{grid:{color:'rgba(255,56,96,0.08)'},ticks:{font:{size:10}},min:80,max:380}}}});
+
+// TAT Bands
+const tatBands=CLINICS.map(cli=>{
+  const tats=CLINIC_TAT[cli];
+  return {
+    critical:tats.filter(v=>v>220).length,
+    high:tats.filter(v=>v>180&&v<=220).length,
+    moderate:tats.filter(v=>v>140&&v<=180).length,
+    good:tats.filter(v=>v<=140).length
+  };
+});
+new Chart(document.getElementById('cTatBands'),{type:'bar',
+  data:{labels:CLINICS.map(c=>c.split(' ')[0]),datasets:[
+    {label:'>220 Critical',data:tatBands.map(b=>b.critical),backgroundColor:'rgba(255,56,96,0.8)',stack:'s',borderRadius:2},
+    {label:'181-220 High',data:tatBands.map(b=>b.high),backgroundColor:'rgba(255,183,3,0.8)',stack:'s',borderRadius:2},
+    {label:'141-180 Moderate',data:tatBands.map(b=>b.moderate),backgroundColor:'rgba(255,209,102,0.8)',stack:'s',borderRadius:2},
+    {label:'≤140 Good',data:tatBands.map(b=>b.good),backgroundColor:'rgba(6,214,160,0.8)',stack:'s',borderRadius:2},
+  ]},
+  options:{...so,plugins:{legend:{position:'top',labels:{boxWidth:10,padding:8,font:{size:10}}},tooltip:{...TT,mode:'index',intersect:false}},scales:sg()}});
+
+// Subtype Pie
+new Chart(document.getElementById('cSubPie'),{type:'doughnut',
+  data:{labels:SUBTYPES,datasets:[{data:SUB_MAIN.map((v,i)=>v+SUB_SAT[i]),backgroundColor:SUB_COLS,borderWidth:0,hoverOffset:8}]},
+  options:{...so,plugins:{legend:{display:false},tooltip:Object.assign({},TT,{callbacks:{label:ctx=>`${ctx.label}: ${ctx.raw.toLocaleString()} (${(ctx.raw/103027*100).toFixed(1)}%)`}})},cutout:'52%'}});
+
+// Subtype Compare
+const mainTot2=SUB_MAIN.reduce((a,b)=>a+b,0), satTot2=SUB_SAT.reduce((a,b)=>a+b,0);
+new Chart(document.getElementById('cSubCompare'),{type:'bar',
+  data:{labels:SUBTYPES,datasets:[
+    {label:'AHD Main %',data:SUB_MAIN.map(v=>+(v/mainTot2*100).toFixed(1)),backgroundColor:'rgba(0,190,255,0.7)',borderRadius:3},
+    {label:'Satellite %',data:SUB_SAT.map(v=>+(v/satTot2*100).toFixed(1)),backgroundColor:'rgba(255,107,43,0.7)',borderRadius:3}
+  ]},
+  options:{...so,plugins:{legend:{position:'top',labels:{boxWidth:10,padding:8}},tooltip:{...TT}},
+    scales:{x:{grid:{display:false},ticks:{font:{size:9},maxRotation:30}},y:{grid:{color:'rgba(0,190,255,0.05)'},ticks:{callback:v=>v+'%',font:{size:10}}}}}});
+
+// Sub Trend (daily)
+const dailySub={
+  Chemistry:    [2277,2901,3232,2959,3282,2115,3341,3885,3964,3981,3733,4414,3221,3707,4168,3560,4662],
+  Hematology:   [193,278,308,278,324,201,316,444,360,390,353,501,252,358,462,371,533],
+  POC:          [62,95,113,118,104,71,98,124,128,131,104,152,83,107,142,111,167],
+  Endocrinology:[178,257,288,270,281,189,296,341,247,250,219,361,196,262,318,264,441],
+};
+new Chart(document.getElementById('cSubTrend'),{type:'line',
+  data:{labels:DAYS,datasets:Object.entries(dailySub).map(([k,v],i)=>({
+    label:k,data:v,borderColor:SUB_COLS[i],backgroundColor:'transparent',borderWidth:2,pointRadius:3,tension:.3
+  }))},
+  options:{...so,interaction:{mode:'index',intersect:false},plugins:{legend:{position:'top',labels:{boxWidth:10,padding:8,font:{size:10}}},tooltip:{...TT}},scales:sg()}});
+
+// POCT Compare
+new Chart(document.getElementById('cPoctCompare'),{type:'bar',
+  data:{labels:POCT_TESTS,datasets:[
+    {label:'AHD Main',data:POCT_MAIN,backgroundColor:'rgba(0,190,255,0.7)',borderRadius:3},
+    {label:'Satellite',data:POCT_SAT,backgroundColor:'rgba(255,107,43,0.7)',borderRadius:3}
+  ]},
+  options:{...so,plugins:{legend:{position:'top',labels:{boxWidth:10,padding:8}},tooltip:{...TT}},
+    scales:{x:{grid:{display:false},ticks:{font:{size:9},maxRotation:30}},y:{grid:{color:'rgba(0,190,255,0.05)'},ticks:{font:{size:10}},beginAtZero:true}}}});
+
+// POCT per Clinic
+const pocPcts=CLINICS.map(c=>+(CLINIC_POCT[c]/CLINIC_TOTALS[c]*100).toFixed(1));
+new Chart(document.getElementById('cPoctClinic'),{type:'bar',
+  data:{labels:CLINICS.map(c=>c.split(' ')[0]),datasets:[
+    {label:'POCT Tests',data:CLINICS.map(c=>CLINIC_POCT[c]),backgroundColor:C.clinics.map(c=>c+'cc'),borderRadius:3,yAxisID:'y'},
+    {label:'POCT %',data:pocPcts,backgroundColor:'transparent',borderColor:C.orange,type:'line',borderWidth:2,pointRadius:5,yAxisID:'y1'}
+  ]},
+  options:{...so,plugins:{legend:{position:'top',labels:{boxWidth:10,padding:8}},tooltip:{...TT,mode:'index'}},
+    scales:{x:{grid:{display:false}},y:{grid:{color:'rgba(0,190,255,0.05)'},beginAtZero:true},
+      y1:{position:'right',grid:{display:false},ticks:{callback:v=>v+'%'},beginAtZero:true,max:15}}}});
+
+// POCT Breakdown stacked
+new Chart(document.getElementById('cPoctBreakdown'),{type:'bar',
+  data:{labels:CLINICS.map(c=>c.split(' ')[0]),datasets:[
+    {label:'Rapid Strep',data:CLINICS.map(c=>CLINIC_POCT_DETAIL[c].strep),backgroundColor:'rgba(0,190,255,0.8)',stack:'s',borderRadius:2},
+    {label:'Flu A&B',data:CLINICS.map(c=>CLINIC_POCT_DETAIL[c].flu),backgroundColor:'rgba(255,183,3,0.8)',stack:'s',borderRadius:2},
+    {label:'Urine Dipstick',data:CLINICS.map(c=>CLINIC_POCT_DETAIL[c].dip),backgroundColor:'rgba(6,214,160,0.8)',stack:'s',borderRadius:2},
+    {label:'HbA1c',data:CLINICS.map(c=>CLINIC_POCT_DETAIL[c].hba1c),backgroundColor:'rgba(199,125,255,0.8)',stack:'s',borderRadius:2},
+    {label:'Glucose',data:CLINICS.map(c=>CLINIC_POCT_DETAIL[c].gluc),backgroundColor:'rgba(255,107,43,0.8)',stack:'s',borderRadius:2},
+  ]},
+  options:{...so,plugins:{legend:{position:'top',labels:{boxWidth:10,padding:8,font:{size:10}}},tooltip:{...TT,mode:'index',intersect:false}},scales:sg()}});
+
+// Physician bar
+new Chart(document.getElementById('cPhyBar'),{type:'bar',
+  data:{labels:PHYSICIANS.map(p=>p.name.replace('Dr. ','')),
+    datasets:[{data:PHYSICIANS.map(p=>p.cnt),backgroundColor:PHYSICIANS.map(p=>p.type==='sat'?C.orange+'cc':C.blue+'cc'),borderRadius:3}]},
+  options:{...so,indexAxis:'y',plugins:{legend:{display:false},tooltip:Object.assign({},TT,{callbacks:{label:ctx=>`${ctx.raw.toLocaleString()} orders`}})},
+    scales:{x:{grid:{color:'rgba(0,190,255,0.05)'},ticks:{font:{size:10}}},y:{grid:{display:false},ticks:{font:{size:10}}}}}});
+
+// Specialty donut
+new Chart(document.getElementById('cSpecDonut'),{type:'doughnut',
+  data:{labels:['Family Med','Internal Med','Cardiology','Emergency','Endocrinology','Nephrology','Oncology','Other'],
+    datasets:[{data:[6260,5600,4800,2892,1714,2623,1939,2221],backgroundColor:[C.orange,C.blue,C.purple,C.danger,C.green,C.teal,C.yellow,'#8fb8d8'],borderWidth:0}]},
+  options:{...so,plugins:{legend:{position:'bottom',labels:{boxWidth:10,padding:8,font:{size:10}}},tooltip:{...TT}},cutout:'50%'}});
+
+// Dept Category donut
+const deptCats={Cardiology:6930+5963+1220,Emergency:5744+1080,'Critical Care':5707,'Internal Med':4143+3446+2133+2257+1022,'Endocrinology':4684,Oncology:2643+1671,'Renal':1791+939,'Ambulatory':1712,'Paediatrics':1636+1391,'OB/GYN':1244+1095};
+new Chart(document.getElementById('cDeptCat'),{type:'doughnut',
+  data:{labels:Object.keys(deptCats),datasets:[{data:Object.values(deptCats),
+    backgroundColor:[C.blue,'#fb8b24','#e63946',C.purple,C.green,C.yellow,C.teal,C.clinics[5],'#ff8fa3',C.clinics[6]],borderWidth:0,hoverOffset:8}]},
+  options:{...so,plugins:{legend:{position:'bottom',labels:{boxWidth:10,padding:8,font:{size:10}}},tooltip:Object.assign({},TT,{callbacks:{label:ctx=>`${ctx.label}: ${ctx.raw.toLocaleString()}`}})},cutout:'48%'}});
+
+// MID Bar
+new Chart(document.getElementById('cMidBar'),{type:'bar',
+  data:{labels:MID_MOD,datasets:[
+    {label:'January',data:MID_JAN,backgroundColor:'rgba(0,190,255,0.6)',borderRadius:3},
+    {label:'February',data:MID_FEB,backgroundColor:'rgba(6,214,160,0.6)',borderRadius:3},
+    {label:'Mar 1-25',data:MID_MAR,backgroundColor:'rgba(255,107,43,0.7)',borderRadius:3}
+  ]},
+  options:{...so,plugins:{legend:{position:'top',labels:{boxWidth:10,padding:8}},tooltip:{...TT,mode:'index',intersect:false}},scales:sg()}});
+
+// MID Pie
+new Chart(document.getElementById('cMidPie'),{type:'doughnut',
+  data:{labels:MID_MOD,datasets:[{data:MID_MAR,backgroundColor:MID_COLS,borderWidth:0,hoverOffset:8}]},
+  options:{...so,plugins:{legend:{display:false},tooltip:Object.assign({},TT,{callbacks:{label:ctx=>`${ctx.label}: ${ctx.raw} (${(ctx.raw/5122*100).toFixed(1)}%)`}})},cutout:'52%'}});
+
+// MID Specialty
+new Chart(document.getElementById('cMidSpecialty'),{type:'line',
+  data:{labels:['Jan','Feb','Mar 1-25'],datasets:[
+    {label:'IR',data:[401,400,259],borderColor:C.orange,backgroundColor:'transparent',borderWidth:2.5,pointRadius:6,tension:.3},
+    {label:'Dexa',data:[233,176,92],borderColor:C.purple,backgroundColor:'transparent',borderWidth:2,pointRadius:5,tension:.3},
+    {label:'Nuc Med',data:[101,137,49],borderColor:C.green,backgroundColor:'transparent',borderWidth:2,pointRadius:5,tension:.3},
+    {label:'PET-CT',data:[108,92,48],borderColor:C.yellow,backgroundColor:'transparent',borderWidth:2,pointRadius:5,tension:.3},
+    {label:'Fluoro',data:[53,37,79],borderColor:C.danger,backgroundColor:'transparent',borderWidth:2,pointRadius:5,tension:.3},
+  ]},
+  options:{...so,plugins:{legend:{position:'right',labels:{boxWidth:10,padding:8,font:{size:10}}},tooltip:{...TT}},
+    scales:{x:{grid:{display:false}},y:{grid:{color:'rgba(0,190,255,0.05)'},beginAtZero:true}}}});
+
+// Enc Pie
+new Chart(document.getElementById('cEncPie'),{type:'doughnut',
+  data:{labels:ENC_TYPES,datasets:[{data:ENC_VALS,backgroundColor:ENC_COLS,borderWidth:0,hoverOffset:8}]},
+  options:{...so,plugins:{legend:{display:false},tooltip:Object.assign({},TT,{callbacks:{label:ctx=>`${ctx.label}: ${ctx.raw.toLocaleString()} (${(ctx.raw/103027*100).toFixed(1)}%)`}})},cutout:'50%'}});
+
+// Hourly Main
+new Chart(document.getElementById('cHourMain'),{type:'bar',
+  data:{labels:HOUR_LABELS,datasets:[{data:HOUR_MAIN,backgroundColor:HOUR_MAIN.map(v=>v>5000?C.orange:v>3000?C.blue:'rgba(0,190,255,0.4)'),borderRadius:2}]},
+  options:{...so,plugins:{legend:{display:false},tooltip:{...TT}},scales:sg()}});
+
+// Hourly Sat
+new Chart(document.getElementById('cHourSat'),{type:'bar',
+  data:{labels:HOUR_LABELS.slice(6,20),datasets:[{data:HOUR_SAT.slice(6,20),backgroundColor:HOUR_SAT.slice(6,20).map(v=>v>2000?C.orange:v>1500?C.purple:'rgba(199,125,255,0.5)'),borderRadius:2}]},
+  options:{...so,plugins:{legend:{display:false},tooltip:{...TT}},scales:sg()}});
+
+// DOW Bar
+new Chart(document.getElementById('cDowBar'),{type:'bar',
+  data:{labels:DOW_LABELS,datasets:[{data:DOW_VALS,backgroundColor:DOW_VALS.map((v,i)=>i===1?C.orange:i===2?'rgba(255,56,96,0.5)':'rgba(0,190,255,0.6)'),borderRadius:3}]},
+  options:{...so,plugins:{legend:{display:false},tooltip:{...TT}},scales:sg()}});
+
+
+// ══════════════════════════════════════════════════════════════
+// CONVERSION TAB DATA
+// ══════════════════════════════════════════════════════════════
+var AHD_PT   = [641,912,1041,1017,1078,470,737,997,1141,1168,1101,1051,425,745,931,1020,1109,1048,12,7,714,887,895,892,0];
+var SAT_PT   = [270,415,479,489,540,407,419,448,458,594,508,489,409,323,445,414,486,420,1,1,255,363,454,546,0];
+var LAB_MAIN = [2815,3480,3677,3454,4023,2593,4088,4651,3980,3692,3924,4029,3194,3597,3953,3321,4072,3392,1950,1188,2946,4000,3286,4130,4062];
+var LAB_SAT  = [556,863,1055,1051,1231,715,929,1267,1044,1257,1028,1146,672,783,1041,1009,1693,1417,273,40,779,1133,1039,1148,1488];
+var MID_DAY  = [296,296,296,296,296,296,296,296,296,296,343,296,296,296,296,296,351,152,52,25,102,149,290,363,0];
+var DAYS22   = ['Mar 1','Mar 2','Mar 3','Mar 4','Mar 5','Mar 6','Mar 7','Mar 8','Mar 9','Mar 10','Mar 11','Mar 12','Mar 13','Mar 14','Mar 15','Mar 16','Mar 17','Mar 18','Mar 19','Mar 20','Mar 21','Mar 22','Mar 23','Mar 24'];
+var DOW22    = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat','Sun','Mon','Tue','Wed','Thu','Fri','Sat','Sun','Mon','Tue','Wed','Thu','Fri','Sat','Sun','Mon','Tue','Wed'];
+
+// Clinic conversion data (attended pts, lab tests, POCT, avg TAT, Mar 1-25)
+var CLINIC_CONV = [
+  {name:'ABC',       pts:1548, lab:4565, poct:143, tat:195, dec:'CONSIDER'},
+  {name:'AKC',    pts:940,  lab:2394, poct:222, tat:193, dec:'CONSIDER'},
+  {name:'NSC',    pts:1216, lab:2288, poct:213, tat:155, dec:'DEPLOY'},
+  {name:'MSC',            pts:1138, lab:1732, poct:198, tat:169, dec:'DEPLOY'},
+  {name:'JMC',        pts:892,  lab:1440, poct:134, tat:183, dec:'CONSIDER'},
+  {name:'DHC',     pts:875,  lab:1414, poct:62,  tat:191, dec:'MONITOR'},
+  {name:'DMC', pts:1565, lab:2873, poct:74,  tat:196, dec:'MONITOR'},
+  {name:'The Face', pts:459,  lab:0,    poct:0,   tat:0,   dec:'N/A — Dermatology'},
+];
+
+// Per-clinic daily attended patients (7 clinics x 24 days)
+var CLINIC_PT_DAILY = {
+  'ABC':       [39,84,87,79,92,54,85,63,85,105,114,98,49,75,68,75,114,89,0,0,32,61,99,138],
+  'AKC':    [33,59,47,61,48,33,42,67,52,39,40,48,40,36,72,50,42,45,0,0,30,56,27,26],
+  'NSC':    [52,67,70,68,71,44,59,77,46,75,64,67,33,55,84,52,71,66,1,1,34,59,43,74],
+  'MSC':            [64,73,49,62,66,79,68,70,62,58,47,56,57,51,59,44,35,42,0,0,43,53,22,18],
+  'JMC':        [17,34,42,43,71,40,53,27,52,62,58,75,27,28,35,51,53,58,0,0,43,23,44,68],
+  'DHC':     [18,34,35,63,69,48,49,36,49,55,54,59,49,24,39,51,31,55,0,0,17,40,52,39],
+  'DMC': [31,53,111,94,104,85,48,94,91,155,91,71,113,34,69,65,111,48,0,0,42,55,91,109],
+  'The Face': [16,11,38,19,19,24,15,14,21,45,40,15,41,20,19,26,29,17,0,0,14,16,38,74],
+};
+
+// ── Patient daily chart ───────────────────────────────────────
+new Chart(document.getElementById('cPtDaily'),{type:'bar',
+  data:{labels:DAYS22,datasets:[
+    {label:'AHD Main',data:AHD_PT,backgroundColor:DAYS22.map(function(_,i){return i===18||i===19?'rgba(255,56,96,0.4)':'rgba(0,190,255,0.7)';}),borderRadius:3,stack:'s'},
+    {label:'Satellite',data:SAT_PT,backgroundColor:DAYS22.map(function(_,i){return i===18||i===19?'rgba(255,56,96,0.2)':'rgba(255,107,43,0.6)';}),borderRadius:3,stack:'s'}
+  ]},
+  options:{responsive:true,maintainAspectRatio:false,
+    interaction:{mode:'index',intersect:false},
+    plugins:{legend:{position:'top',labels:{boxWidth:10,padding:8,font:{size:10}}},tooltip:TT},
+    scales:{x:{grid:{display:false},ticks:{font:{size:9},maxRotation:30}},y:{grid:{color:'rgba(0,190,255,0.05)'},beginAtZero:true}}}});
+
+// ── Lab vs Patients scatter ───────────────────────────────────
+var scatterData = [];
+for(var i=0;i<22;i++){
+  if(AHD_PT[i]>50){ scatterData.push({x:AHD_PT[i],y:LAB_MAIN[i],day:DAYS22[i]}); }
+}
+new Chart(document.getElementById('cPtLabCorr'),{type:'scatter',
+  data:{datasets:[{label:'Lab tests vs Patients',data:scatterData,
+    backgroundColor:'rgba(0,190,255,0.6)',pointRadius:6,pointHoverRadius:8}]},
+  options:{responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{display:false},tooltip:Object.assign({},TT,{callbacks:{label:function(ctx){return ctx.raw.day+': '+ctx.raw.x.toLocaleString()+' pts → '+ctx.raw.y.toLocaleString()+' tests';}}})},
+    scales:{
+      x:{title:{display:true,text:'Attended Patients',color:'#4a7a9b',font:{size:10}},grid:{display:false},ticks:{font:{size:10}}},
+      y:{title:{display:true,text:'Lab Tests',color:'#4a7a9b',font:{size:10}},grid:{color:'rgba(0,190,255,0.05)'},beginAtZero:true}}}});
+
+// ── Status donuts ─────────────────────────────────────────────
+new Chart(document.getElementById('cAhdStatus'),{type:'doughnut',
+  data:{labels:['Checked Out','Checked In','Canceled','No Show'],
+    datasets:[{data:[15238,3014,4662,2405],
+      backgroundColor:['rgba(6,214,160,0.8)','rgba(0,190,255,0.7)','rgba(255,56,96,0.7)','rgba(255,183,3,0.7)'],
+      borderWidth:0,hoverOffset:6}]},
+  options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{boxWidth:10,padding:6,font:{size:10}}},tooltip:TT},cutout:'52%'}});
+
+new Chart(document.getElementById('cSatStatus'),{type:'doughnut',
+  data:{labels:['Checked Out','Checked In','Canceled','No Show'],
+    datasets:[{data:[8501,268,1816,914],
+      backgroundColor:['rgba(6,214,160,0.8)','rgba(0,190,255,0.7)','rgba(255,56,96,0.7)','rgba(255,183,3,0.7)'],
+      borderWidth:0,hoverOffset:6}]},
+  options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{boxWidth:10,padding:6,font:{size:10}}},tooltip:TT},cutout:'52%'}});
+
+// ── DOW pattern ───────────────────────────────────────────────
+var dowPt = {Mon:0,Tue:0,Wed:0,Thu:0,Fri:0,Sat:0,Sun:0};
+var dowDows = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat','Sun','Mon','Tue','Wed','Thu','Fri','Sat','Sun','Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+for(var i=0;i<22;i++){ if(AHD_PT[i]>50) dowPt[dowDows[i]] = (dowPt[dowDows[i]]||0) + AHD_PT[i]; }
+var dowOrder = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+new Chart(document.getElementById('cPtDow'),{type:'bar',
+  data:{labels:dowOrder,datasets:[
+    {label:'AHD Main',data:dowOrder.map(function(d){return dowPt[d]||0;}),backgroundColor:dowOrder.map(function(d){return d==='Fri'||d==='Sat'?'rgba(255,56,96,0.6)':'rgba(0,190,255,0.6)';}),borderRadius:3}
+  ]},
+  options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:TT},
+    scales:{x:{grid:{display:false}},y:{grid:{color:'rgba(0,190,255,0.05)'},beginAtZero:true}}}});
+
+// ── Conversion rate trend ─────────────────────────────────────
+var convDays=[],convMain=[],convSat=[];
+for(var i=0;i<22;i++){
+  if(AHD_PT[i]>50&&SAT_PT[i]>20){
+    convDays.push(DAYS22[i]);
+    convMain.push(+(LAB_MAIN[i]/AHD_PT[i]).toFixed(2));
+    convSat.push(+(LAB_SAT[i]/SAT_PT[i]).toFixed(2));
+  }
+}
+new Chart(document.getElementById('cConvRate'),{type:'line',
+  data:{labels:convDays,datasets:[
+    {label:'AHD Main tests/pt',data:convMain,borderColor:C.blue,backgroundColor:'rgba(0,190,255,0.1)',borderWidth:2,pointRadius:4,tension:.3,fill:true},
+    {label:'Satellite tests/pt',data:convSat,borderColor:C.orange,backgroundColor:'rgba(255,107,43,0.08)',borderWidth:2,pointRadius:4,tension:.3,fill:true}
+  ]},
+  options:{responsive:true,maintainAspectRatio:false,
+    interaction:{mode:'index',intersect:false},
+    plugins:{legend:{position:'top',labels:{boxWidth:10,padding:8,font:{size:10}}},tooltip:TT},
+    scales:{x:{grid:{display:false},ticks:{font:{size:9},maxRotation:30}},
+      y:{grid:{color:'rgba(0,190,255,0.05)'},beginAtZero:false,min:1,
+        title:{display:true,text:'Tests per Patient',color:'#4a7a9b',font:{size:10}}}}}});
+
+// ── Clinic patient trend ──────────────────────────────────────
+var cliCols=['ABC','AKC','NSC','MSC','JMC','DHC','DMC','The Face'];
+new Chart(document.getElementById('cClinicPtTrend'),{type:'line',
+  data:{labels:DAYS22,datasets:cliCols.map(function(cli,i){return {
+    label:cli,data:CLINIC_PT_DAILY[cli],borderColor:C.clinics[i],
+    backgroundColor:'transparent',borderWidth:2,pointRadius:3,tension:.3
+  };})},
+  options:{responsive:true,maintainAspectRatio:false,
+    interaction:{mode:'index',intersect:false},
+    plugins:{legend:{position:'bottom',labels:{boxWidth:10,padding:8,font:{size:10}}},tooltip:TT},
+    scales:{x:{grid:{display:false},ticks:{font:{size:9},maxRotation:30}},y:{grid:{color:'rgba(0,190,255,0.05)'},beginAtZero:true}}}});
+
+// ── Specialty mix AHD ─────────────────────────────────────────
+new Chart(document.getElementById('cSpecMix'),{type:'bar',
+  data:{labels:['ENT','Paediatrics','Dermatology','Surgery/Anaes','Internal Med','Primary Care','OB/GYN','Orthopaedics','Urology','Oncology','Cardiology','Ophthalmology','Psychiatry','Radiology','Neurology'],
+    datasets:[{data:[3025,2213,1595,1699,1385,1344,1178,1074,913,850,792,621,533,589,517],
+      backgroundColor:['rgba(0,190,255,0.7)','rgba(255,107,43,0.7)','rgba(0,255,179,0.7)','rgba(199,125,255,0.7)','rgba(255,183,3,0.7)','rgba(255,56,96,0.7)','rgba(0,212,170,0.7)','rgba(127,200,248,0.7)','rgba(255,209,102,0.7)','rgba(239,159,127,0.7)','rgba(100,180,255,0.7)','rgba(180,255,200,0.7)','rgba(255,150,200,0.7)','rgba(200,200,255,0.7)','rgba(255,200,100,0.7)'],
+      borderRadius:3}]},
+  options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',
+    plugins:{legend:{display:false},tooltip:TT},
+    scales:{x:{grid:{color:'rgba(0,190,255,0.05)'},ticks:{font:{size:10}}},y:{grid:{display:false},ticks:{font:{size:10}}}}}});
+
+// ── Satellite mix ─────────────────────────────────────────────
+new Chart(document.getElementById('cSatMix'),{type:'doughnut',
+  data:{labels:['Primary Care','Paediatrics','Dermatology','ENT','Dental','OB/GYN','Orthopaedics','Other'],
+    datasets:[{data:[1891,1244,661,360,619,303,322,209],
+      backgroundColor:['rgba(0,190,255,0.8)','rgba(255,107,43,0.8)','rgba(0,255,179,0.8)','rgba(199,125,255,0.8)','rgba(255,183,3,0.8)','rgba(255,56,96,0.8)','rgba(0,212,170,0.8)','rgba(127,200,248,0.8)'],
+      borderWidth:0,hoverOffset:8}]},
+  options:{responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{position:'right',labels:{boxWidth:10,padding:8,font:{size:10}}},tooltip:TT},cutout:'45%'}});
+
+// ── Clinic conversion table ───────────────────────────────────
+var tbCC='';
+CLINIC_CONV.forEach(function(c){
+  var lr=(c.lab/c.pts).toFixed(2);
+  var pocPct=(c.poct/c.lab*100).toFixed(1);
+  var db=c.dec==='DEPLOY'?'ok':c.dec==='CONSIDER'?'warn':'blue';
+  var tatCol=c.tat>200?'var(--danger)':c.tat>180?'var(--warn)':'var(--ok)';
+  tbCC+='<tr>'+
+    '<td style="font-weight:600">'+c.name+'</td>'+
+    '<td class="r">'+c.pts.toLocaleString()+'</td>'+
+    '<td class="r">'+(c.pts>0?(c.pts/22).toFixed(0):'—')+'</td>'+
+    '<td class="r">'+c.lab.toLocaleString()+'</td>'+
+    '<td class="r" style="font-weight:600;color:var(--accent)">'+(c.pts>0?lr:'—')+'</td>'+
+    '<td class="r">'+c.poct+'</td>'+
+    '<td class="r">'+pocPct+'%</td>'+
+    '<td class="r" style="color:'+tatCol+'">'+c.tat+' min</td>'+
+    '<td><span class="badge '+db+'">'+c.dec+'</span></td>'+
+    '</tr>';
+});
+document.getElementById('tbClinicConv').innerHTML=tbCC;
+
+// ── Daily conversion detail table ────────────────────────────
+var tbCD='';
+var stdDays=[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,20,21,22,23]; // excl 18,19 (Mar 19,20=holidays)
+stdDays.forEach(function(i){
+  var ap=AHD_PT[i],sp=SAT_PT[i],lm=LAB_MAIN[i],ls=LAB_SAT[i],md=MID_DAY[i];
+  var lr_a=ap>50?(lm/ap).toFixed(2):'<span style="color:var(--text3)">—</span>';
+  var lr_s=sp>20?(ls/sp).toFixed(2):'<span style="color:var(--text3)">—</span>';
+  var lr_m=ap>50?(md/ap).toFixed(2):'<span style="color:var(--text3)">—</span>';
+  var anomaly=i===18||i===19;
+  var rowStyle=anomaly?'style="opacity:.4"':'';
+  tbCD+='<tr '+rowStyle+'>'+
+    '<td style="font-family:var(--mono)">'+DAYS22[i]+'</td>'+
+    '<td style="color:var(--text3)">'+DOW22[i]+'</td>'+
+    '<td class="r">'+ap.toLocaleString()+'</td>'+
+    '<td class="r">'+lm.toLocaleString()+'</td>'+
+    '<td class="r" style="color:var(--accent);font-weight:600">'+lr_a+'</td>'+
+    '<td class="r">'+sp.toLocaleString()+'</td>'+
+    '<td class="r">'+ls.toLocaleString()+'</td>'+
+    '<td class="r" style="color:var(--accent3);font-weight:600">'+lr_s+'</td>'+
+    '<td class="r">'+md.toLocaleString()+'</td>'+
+    '<td class="r" style="color:var(--accent4)">'+lr_m+'</td>'+
+    '</tr>';
+});
+document.getElementById('tbConvDetail').innerHTML=tbCD;
+
+
+
+// ══════════════════════════════════════════════════════════════
+// TRENDS & PATTERNS TAB
+// ══════════════════════════════════════════════════════════════
+
+// Full 22-day data (reuse existing arrays + add combined)
+var DAYS22_FULL = ['Mar 1','Mar 2','Mar 3','Mar 4','Mar 5','Mar 6','Mar 7','Mar 8','Mar 9','Mar 10','Mar 11','Mar 12','Mar 13','Mar 14','Mar 15','Mar 16','Mar 17','Mar 18','Mar 19','Mar 20','Mar 21','Mar 22','Mar 23','Mar 24','Mar 25'];
+var LAB_TOTAL22 = DAILY_MAIN.map(function(v,i){return v + DAILY_SAT[i];});
+// Holiday shading: indices 18,19,20 = Mar 19,20,21 (0-indexed)
+var HOLIDAY_IDX = [18,19,20];
+
+// Full 22-day TAT (main + sat)
+var TAT_MAIN_22 = [82,91,85,101,82,84,97,99,99,80,78,93,81,86,84,85,90,116,72,62,70,69,91,84,87];
+var TAT_SAT_22  = [172,162,162,189,165,176,198,216,200,187,167,206,186,171,214,211,200,219,90,2,174,171,188,184,190];
+// Note: Mar 19 sat TAT=90 (almost no tests), Mar 20=2 (single outlier) — filter these in chart
+
+// Week totals
+var W1_MAIN = DAILY_MAIN.slice(0,7).reduce(function(a,b){return a+b;},0);
+var W1_SAT  = DAILY_SAT.slice(0,7).reduce(function(a,b){return a+b;},0);
+var W2_MAIN = DAILY_MAIN.slice(7,14).reduce(function(a,b){return a+b;},0);
+var W2_SAT  = DAILY_SAT.slice(7,14).reduce(function(a,b){return a+b;},0);
+var W3_MAIN = DAILY_MAIN.slice(14,22).reduce(function(a,b){return a+b;},0);
+var W3_SAT  = DAILY_SAT.slice(14,22).reduce(function(a,b){return a+b;},0);
+// W3 adjusted (excl Mar 19-21)
+var W3_MAIN_ADJ = DAILY_MAIN.slice(14,18).reduce(function(a,b){return a+b;},0) + DAILY_MAIN[21];
+var W3_SAT_ADJ  = DAILY_SAT.slice(14,18).reduce(function(a,b){return a+b;},0) + DAILY_SAT[21];
+
+// ── Unified timeline (multi-axis) ─────────────────────────────
+(function(){
+  var ctx = document.getElementById('cUnified');
+  if(!ctx) return;
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: DAYS22_FULL,
+      datasets: [
+        {
+          label: 'Total Lab Tests',
+          data: LAB_TOTAL22,
+          backgroundColor: DAYS22_FULL.map(function(_,i){
+            if(i===18||i===19) return 'rgba(255,183,3,0.5)';
+            if(i===20) return 'rgba(199,125,255,0.5)';
+            return 'rgba(0,190,255,0.55)';
+          }),
+          borderRadius: 3, yAxisID: 'yL', order: 2
+        },
+        {
+          label: 'AHD Patients',
+          type: 'line',
+          data: AHD_PT,
+          borderColor: '#00ffb3', backgroundColor: 'transparent',
+          borderWidth: 2.5, pointRadius: 4, pointHoverRadius: 7,
+          tension: 0.35, yAxisID: 'yL', order: 1
+        },
+        {
+          label: 'AHD Main TAT (min)',
+          type: 'line',
+          data: TAT_MAIN_22,
+          borderColor: '#ffb703', backgroundColor: 'transparent',
+          borderWidth: 2, pointRadius: 3, borderDash: [4,3],
+          tension: 0.3, yAxisID: 'yR', order: 0
+        },
+        {
+          label: 'Satellite TAT (min)',
+          type: 'line',
+          data: TAT_SAT_22.map(function(v,i){ return (i===19)?null:v; }),
+          borderColor: '#ff3860', backgroundColor: 'transparent',
+          borderWidth: 2, pointRadius: 3, borderDash: [6,3],
+          tension: 0.3, yAxisID: 'yR', order: 0, spanGaps: false
+        }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { position: 'top', labels: { boxWidth: 12, padding: 10, font: { size: 11 } } },
+        tooltip: TT,
+        annotation: {}
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { size: 10 }, maxRotation: 30 } },
+        yL: {
+          position: 'left', beginAtZero: true,
+          grid: { color: 'rgba(0,190,255,0.05)' },
+          ticks: { font: { size: 10 }, callback: function(v){ return v.toLocaleString(); } },
+          title: { display: true, text: 'Volume (tests / patients)', color: '#4a7a9b', font: { size: 10 } }
+        },
+        yR: {
+          position: 'right', beginAtZero: false, min: 50, max: 300,
+          grid: { display: false },
+          ticks: { font: { size: 10 }, callback: function(v){ return v + ' min'; } },
+          title: { display: true, text: 'TAT (minutes)', color: '#4a7a9b', font: { size: 10 } }
+        }
+      }
+    }
+  });
+})();
+
+// ── Patient + Lab overlay ─────────────────────────────────────
+(function(){
+  var ctx = document.getElementById('cPtLabOverlay');
+  if(!ctx) return;
+  new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: DAYS22_FULL,
+      datasets: [
+        {
+          label: 'Lab Tests (Main)',
+          data: DAILY_MAIN,
+          borderColor: C.blue, backgroundColor: 'rgba(0,190,255,0.08)',
+          borderWidth: 2.5, pointRadius: 4, tension: 0.3, fill: true
+        },
+        {
+          label: 'Lab Tests (Satellite)',
+          data: DAILY_SAT,
+          borderColor: C.orange, backgroundColor: 'rgba(255,107,43,0.06)',
+          borderWidth: 2, pointRadius: 3, tension: 0.3, fill: true
+        },
+        {
+          label: 'AHD Patients × 4',
+          data: AHD_PT.map(function(v){ return v * 4; }),
+          borderColor: C.green, backgroundColor: 'transparent',
+          borderWidth: 2, borderDash: [5,3], pointRadius: 3, tension: 0.3
+        }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { position: 'top', labels: { boxWidth: 10, padding: 8, font: { size: 10 } } },
+        tooltip: Object.assign({},TT,{callbacks:{
+            label: function(ctx) {
+              if(ctx.dataset.label.indexOf('×')>-1) {
+                return 'AHD Patients: ' + (ctx.raw/4).toLocaleString();
+              }
+              return ctx.dataset.label + ': ' + ctx.raw.toLocaleString();
+            }
+          }
+        })
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { size: 9 }, maxRotation: 30 } },
+        y: {
+          beginAtZero: true,
+          grid: { color: 'rgba(0,190,255,0.05)' },
+          ticks: { font: { size: 10 }, callback: function(v){ return v.toLocaleString(); } }
+        }
+      }
+    }
+  });
+})();
+
+// ── TAT divergence ────────────────────────────────────────────
+(function(){
+  var ctx = document.getElementById('cTatDivergence');
+  if(!ctx) return;
+  var cleanSat = TAT_SAT_22.map(function(v,i){ return (i===19||i===20)?null:v; });
+  new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: DAYS22_FULL,
+      datasets: [
+        {
+          label: 'AHD Main TAT',
+          data: TAT_MAIN_22,
+          borderColor: C.ok, backgroundColor: 'rgba(6,214,160,0.1)',
+          borderWidth: 2.5, pointRadius: 4, tension: 0.35, fill: true
+        },
+        {
+          label: 'Satellite Avg TAT',
+          data: cleanSat,
+          borderColor: C.danger, backgroundColor: 'rgba(255,56,96,0.07)',
+          borderWidth: 2.5, pointRadius: 4, tension: 0.35, fill: true, spanGaps: false
+        },
+        {
+          label: 'Target (90 min)',
+          data: DAYS22_FULL.map(function(){ return 90; }),
+          borderColor: 'rgba(6,214,160,0.3)', borderDash: [4,4],
+          borderWidth: 1, pointRadius: 0, fill: false
+        }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { position: 'top', labels: { boxWidth: 10, padding: 8, font: { size: 10 } } },
+        tooltip: TT
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { size: 9 }, maxRotation: 30 } },
+        y: {
+          min: 50, max: 280,
+          grid: { color: 'rgba(255,56,96,0.05)' },
+          ticks: { font: { size: 10 }, callback: function(v){ return v + ' min'; } }
+        }
+      }
+    }
+  });
+})();
+
+// ── Weekly comparison ─────────────────────────────────────────
+(function(){
+  var ctx = document.getElementById('cWeekly');
+  if(!ctx) return;
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: ['W1 (Mar 1–7)','W2 (Mar 8–14)','W3 (Mar 15–22)','W3 Adjusted\n(excl holiday)'],
+      datasets: [
+        {
+          label: 'AHD Main', stack: 's',
+          data: [W1_MAIN, W2_MAIN, W3_MAIN, W3_MAIN_ADJ],
+          backgroundColor: ['rgba(0,190,255,0.7)','rgba(0,190,255,0.7)','rgba(255,183,3,0.5)','rgba(0,190,255,0.7)'],
+          borderRadius: 3
+        },
+        {
+          label: 'Satellite', stack: 's',
+          data: [W1_SAT, W2_SAT, W3_SAT, W3_SAT_ADJ],
+          backgroundColor: ['rgba(255,107,43,0.6)','rgba(255,107,43,0.6)','rgba(255,183,3,0.3)','rgba(255,107,43,0.6)'],
+          borderRadius: 3
+        }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { position: 'top', labels: { boxWidth: 10, padding: 8, font: { size: 10 } } },
+        tooltip: Object.assign({},TT,{callbacks:{
+          footer: function(items) {
+            var total = items.reduce(function(s,i){ return s+i.raw; },0);
+            return 'Total: ' + total.toLocaleString();
+          }
+        }})
+      },
+      scales: {
+        x: { grid: { display: false } },
+        y: { beginAtZero: true, grid: { color: 'rgba(0,190,255,0.05)' },
+          ticks: { callback: function(v){ return v.toLocaleString(); } } }
+      }
+    }
+  });
+})();
+
+// ── Clinic rhythm (normalised) ────────────────────────────────
+(function(){
+  var ctx = document.getElementById('cClinicRhythm');
+  if(!ctx) return;
+  var cliNames = ['ABC','AKC','NSC','MSC','JMC','DHC'];
+  var datasets = cliNames.map(function(cli,i){
+    var raw = CLINIC_DAILY[cli];
+    var peak = Math.max.apply(null, raw.filter(function(v){return v>0;}));
+    return {
+      label: cli,
+      data: raw.map(function(v){ return peak>0 ? Math.round(v/peak*100) : 0; }),
+      borderColor: C.clinics[i],
+      backgroundColor: 'transparent',
+      borderWidth: 1.5, pointRadius: 2, tension: 0.3
+    };
+  });
+  new Chart(ctx, {
+    type: 'line',
+    data: { labels: DAYS22_FULL, datasets: datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { position: 'bottom', labels: { boxWidth: 10, padding: 8, font: { size: 10 } } },
+        tooltip: Object.assign({},TT,{callbacks:{
+          label: function(ctx){ return ctx.dataset.label + ': ' + ctx.raw + '% of peak'; }
+        }})
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { size: 9 }, maxRotation: 30 } },
+        y: { min: 0, max: 110,
+          grid: { color: 'rgba(0,190,255,0.05)' },
+          ticks: { callback: function(v){ return v+'%'; }, font: { size: 10 } } }
+      }
+    }
+  });
+})();
+
+// ── Eid impact table ──────────────────────────────────────────
+(function(){
+  // Baseline: Mon-Thu Mar 1-18 excl Fri (Mar 6,13,20)
+  var baselineDays = [0,1,2,3,4,6,7,8,9,10,11,13,14,15,17]; // indices (0=Mar1)
+  function avg(arr, idxs){ return Math.round(idxs.reduce(function(s,i){return s+arr[i];},0)/idxs.length); }
+
+  var metrics = [
+    { label:'Total Lab Tests', base:avg(LAB_TOTAL22,baselineDays), v19:LAB_TOTAL22[18], v20:LAB_TOTAL22[19], v21:LAB_TOTAL22[20], v22:LAB_TOTAL22[21] },
+    { label:'AHD Main Tests',  base:avg(DAILY_MAIN,baselineDays),  v19:DAILY_MAIN[18],  v20:DAILY_MAIN[19],  v21:DAILY_MAIN[20],  v22:DAILY_MAIN[21] },
+    { label:'Satellite Tests', base:avg(DAILY_SAT,baselineDays),   v19:DAILY_SAT[18],   v20:DAILY_SAT[19],   v21:DAILY_SAT[20],   v22:DAILY_SAT[21] },
+    { label:'AHD Patients',    base:avg(AHD_PT,baselineDays),      v19:AHD_PT[18],      v20:AHD_PT[19],      v21:AHD_PT[20],      v22:AHD_PT[21] },
+    { label:'Satellite Pts',   base:avg(SAT_PT,baselineDays),      v19:SAT_PT[18],      v20:SAT_PT[19],      v21:SAT_PT[20],      v22:SAT_PT[21] },
+    { label:'AHD Main TAT',    base:avg(TAT_MAIN_22,baselineDays), v19:TAT_MAIN_22[18], v20:TAT_MAIN_22[19], v21:TAT_MAIN_22[20], v22:TAT_MAIN_22[21] },
+    { label:'Sat Avg TAT',     base:avg(TAT_SAT_22.map(function(v,i){return(i===19||i===20)?0:v;}),baselineDays.filter(function(i){return i<18;})), v19:TAT_SAT_22[18], v20:null, v21:TAT_SAT_22[20], v22:TAT_SAT_22[21] },
+  ];
+
+  function pctCell(base, val){
+    if(val===null||val===undefined) return '<td class="r" style="color:var(--text3)">—</td>';
+    if(base===0) return '<td class="r">—</td>';
+    var pct = Math.round((val-base)/base*100);
+    var col = pct >= -5 ? 'var(--ok)' : pct >= -50 ? 'var(--warn)' : 'var(--danger)';
+    if(pct > 5) col = 'var(--ok)';
+    return '<td class="r"><span style="font-family:var(--mono);font-size:12px;color:'+col+'">'+(pct>0?'+':'')+pct+'%</span></td>';
+  }
+  function valCell(v, unit){
+    if(v===null) return '<td class="r" style="color:var(--text3)">—</td>';
+    return '<td class="r" style="font-family:var(--mono)">'+(unit||'')+v.toLocaleString()+(unit===undefined?' min':'')+'</td>';
+  }
+
+  var rows = metrics.map(function(m){
+    var isTat = m.label.indexOf('TAT')>-1;
+    var unit  = isTat ? '' : '';
+    var suffix = isTat ? ' min' : '';
+    return '<tr>'+
+      '<td style="font-weight:600">'+m.label+'</td>'+
+      '<td class="r" style="font-family:var(--mono);color:var(--text2)">'+m.base.toLocaleString()+(isTat?' min':'')+'</td>'+
+      '<td class="r" style="font-family:var(--mono);color:var(--warn)">'+m.v19.toLocaleString()+(isTat?' min':'')+'</td>'+
+      pctCell(m.base,m.v19)+
+      '<td class="r" style="font-family:var(--mono);color:var(--warn)">'+m.v20.toLocaleString()+(isTat?' min':'')+'</td>'+
+      pctCell(m.base,m.v20)+
+      '<td class="r" style="font-family:var(--mono);color:var(--accent4)">'+m.v21.toLocaleString()+(isTat?' min':'')+'</td>'+
+      pctCell(m.base,m.v21)+
+      '<td class="r" style="font-family:var(--mono);color:var(--ok);font-weight:600">'+m.v22.toLocaleString()+(isTat?' min':'')+'</td>'+
+      pctCell(m.base,m.v22)+
+    '</tr>';
+  });
+
+  var el = document.getElementById('tbEidImpact');
+  if(el) el.innerHTML = rows.join('');
+})();
+
+
+// ══════════════════════════════════════════════════════════════
+// YEAR-ON-YEAR TAB — lazy init on first tab click
+var _yoyInited = false;
+function initYOY() {
+  if(_yoyInited) return;
+  _yoyInited = true;
+  setTimeout(function() {
+
+var YOY_LAB = {
+  months: ['Jan','Feb','Mar'],
+  y2024: [146317, 133621, 136981],
+  y2025: [173041, 166676, 155455],
+  y2026: [187002, 175857, null]
+};
+var YOY_MID = {
+  months: ['Jan','Feb','Mar'],
+  y2023: [6567, 6464, 7410],
+  y2024: [8699, 8416, 8225],
+  y2025: [10419, 10311, 9545],
+  y2026: [10921, 10372, null]
+};
+var YOY_MOD_LABELS = ['MRI','CT','US','X-Ray','IR','Dexa','NucMed','PET-CT'];
+var YOY_MOD_2025_JAN = [1141,1210,2995,4027,389,250,124,95];
+var YOY_MOD_2025_FEB = [1123,1200,3049,3928,390,235,116,92];
+var YOY_MOD_2026_JAN = [1419,1266,3226,4009,401,233,101,108];
+var YOY_MOD_2026_FEB = [1334,1203,3058,3850,400,176,137,92];
+var YOY_SAT_LABELS  = ['ABC','AKC','NSC','MSC','DMC*','JMC','DHC'];
+var YOY_SAT_FEB2025 = [7104,3855,3771,2988,5669,4588,3848];
+var YOY_SAT_FEB2026 = [9850,5729,5342,4282,6003,3005,3451];
+var YOY_TABLE = [
+  {m:'Lab Total',      j25:173041,f25:166676,m25:155455,j26:187002,f26:175857,m26:'112,713†',note:'† Mar 1-25 only'},
+  {m:'Lab Satellite',  j25:31500, f25:31823, m25:32367, j26:39695, f26:37662, m26:'22,314†', note:'† Mar 1-25 only'},
+  {m:'MID Full',       j25:10419, f25:10311, m25:9545,  j26:10921, f26:10372, m26:'6,255†',  note:'† Mar 1-25 · SP from Feb'},
+  {m:'MID MRI',        j25:1141,  f25:1123,  m25:1034,  j26:1419,  f26:1334,  m26:'804†',    note:'Strong growth'},
+  {m:'MID CT',         j25:1210,  f25:1200,  m25:1081,  j26:1266,  f26:1203,  m26:'738†',    note:''},
+  {m:'MID Ultrasound', j25:2995,  f25:3049,  m25:3007,  j26:3226,  f26:3058,  m26:'1,973†',  note:''},
+  {m:'MID X-Ray',      j25:4027,  f25:3928,  m25:3503,  j26:4009,  f26:3850,  m26:'2,082†',  note:'Flat trend'},
+  {m:'MID IR',         j25:389,   f25:390,   m25:362,   j26:401,   f26:400,   m26:'310†',    note:'Steady growth'},
+  {m:'MID Dexa',       j25:250,   f25:235,   m25:187,   j26:233,   f26:176,   m26:'119†',    note:'Declining'},
+  {m:'MID NucMed',     j25:124,   f25:116,   m25:97,    j26:101,   f26:137,   m26:'60†',     note:''},
+  {m:'MID PET-CT',     j25:95,    f25:92,    m25:94,    j26:108,   f26:92,    m26:'62†',     note:''},
+];
+
+var tbYoyEl = document.getElementById('tbYoy');
+if(tbYoyEl) {
+  var rows = YOY_TABLE.map(function(r) {
+    var yj = ((r.j26-r.j25)/r.j25*100).toFixed(1);
+    var yf = ((r.f26-r.f25)/r.f25*100).toFixed(1);
+    var jcol = parseFloat(yj)>=0?'var(--ok)':'var(--danger)';
+    var fcol = parseFloat(yf)>=0?'var(--ok)':'var(--danger)';
+    return '<tr>'+
+      '<td style="font-weight:600">'+r.m+'</td>'+
+      '<td class="r">'+r.j25.toLocaleString()+'</td>'+
+      '<td class="r">'+r.j26.toLocaleString()+'</td>'+
+      '<td class="r" style="color:'+jcol+';font-weight:700">'+(parseFloat(yj)>=0?'+':'')+yj+'%</td>'+
+      '<td class="r">'+r.f25.toLocaleString()+'</td>'+
+      '<td class="r">'+r.f26.toLocaleString()+'</td>'+
+      '<td class="r" style="color:'+fcol+';font-weight:700">'+(parseFloat(yf)>=0?'+':'')+yf+'%</td>'+
+      '<td class="r" style="color:var(--text3)">'+r.m25.toLocaleString()+'</td>'+
+      '<td class="r" style="color:var(--text3)">'+r.m26+'</td>'+
+      '<td style="font-size:10px;color:var(--text3)">'+r.note+'</td>'+
+      '</tr>';
+  });
+  tbYoyEl.innerHTML = rows.join('');
+}
+
+new Chart(document.getElementById('cYoyLab'),{type:'bar',
+  data:{labels:YOY_LAB.months,datasets:[
+    {label:'2024',data:YOY_LAB.y2024,backgroundColor:'rgba(100,116,139,0.5)',borderRadius:3},
+    {label:'2025',data:YOY_LAB.y2025,backgroundColor:'rgba(0,190,255,0.5)',borderRadius:3},
+    {label:'2026',data:YOY_LAB.y2026,backgroundColor:'rgba(0,255,179,0.7)',borderRadius:3}
+  ]},
+  options:{responsive:true,maintainAspectRatio:false,
+    interaction:{mode:'index',intersect:false},
+    plugins:{legend:{position:'top',labels:{boxWidth:10,padding:8,font:{size:10}}},tooltip:TT},
+    scales:{x:{grid:{display:false}},y:{grid:{color:'rgba(0,190,255,0.05)'},beginAtZero:false,
+      ticks:{callback:function(v){return (v/1000).toFixed(0)+'k';}}}}}});
+
+new Chart(document.getElementById('cYoyMid'),{type:'line',
+  data:{labels:YOY_MID.months,datasets:[
+    {label:'2023',data:YOY_MID.y2023,borderColor:'rgba(100,116,139,0.5)',backgroundColor:'transparent',borderWidth:1.5,pointRadius:4,tension:.3,borderDash:[4,3]},
+    {label:'2024',data:YOY_MID.y2024,borderColor:'rgba(100,116,139,0.9)',backgroundColor:'transparent',borderWidth:2,pointRadius:4,tension:.3},
+    {label:'2025',data:YOY_MID.y2025,borderColor:C.blue,backgroundColor:'rgba(0,190,255,0.08)',borderWidth:2.5,pointRadius:5,tension:.3,fill:true},
+    {label:'2026',data:YOY_MID.y2026,borderColor:C.green,backgroundColor:'rgba(0,255,179,0.08)',borderWidth:2.5,pointRadius:5,tension:.3,fill:true}
+  ]},
+  options:{responsive:true,maintainAspectRatio:false,
+    interaction:{mode:'index',intersect:false},
+    plugins:{legend:{position:'top',labels:{boxWidth:10,padding:8,font:{size:10}}},tooltip:TT},
+    scales:{x:{grid:{display:false}},y:{grid:{color:'rgba(0,190,255,0.05)'},beginAtZero:false,
+      ticks:{callback:function(v){return v.toLocaleString();}}}}}});
+
+new Chart(document.getElementById('cYoyMidMod'),{type:'bar',
+  data:{labels:YOY_MOD_LABELS,datasets:[
+    {label:'Jan 2025',data:YOY_MOD_2025_JAN,backgroundColor:'rgba(0,190,255,0.4)',borderRadius:2},
+    {label:'Jan 2026',data:YOY_MOD_2026_JAN,backgroundColor:'rgba(0,190,255,0.85)',borderRadius:2},
+    {label:'Feb 2025',data:YOY_MOD_2025_FEB,backgroundColor:'rgba(0,255,179,0.4)',borderRadius:2},
+    {label:'Feb 2026',data:YOY_MOD_2026_FEB,backgroundColor:'rgba(0,255,179,0.85)',borderRadius:2}
+  ]},
+  options:{responsive:true,maintainAspectRatio:false,
+    interaction:{mode:'index',intersect:false},
+    plugins:{legend:{position:'top',labels:{boxWidth:10,padding:8,font:{size:10}}},tooltip:TT},
+    scales:{x:{grid:{display:false}},y:{grid:{color:'rgba(0,190,255,0.05)'},beginAtZero:true,
+      ticks:{callback:function(v){return v.toLocaleString();}}}}}});
+
+var satYoyPcts = YOY_SAT_FEB2025.map(function(v,i){
+  return parseFloat(((YOY_SAT_FEB2026[i]-v)/v*100).toFixed(1));
+});
+new Chart(document.getElementById('cYoySat'),{type:'bar',
+  data:{labels:YOY_SAT_LABELS,datasets:[
+    {label:'Feb 2025',data:YOY_SAT_FEB2025,backgroundColor:'rgba(0,190,255,0.4)',borderRadius:3},
+    {label:'Feb 2026',data:YOY_SAT_FEB2026,
+      backgroundColor:YOY_SAT_FEB2026.map(function(v,i){
+        return v>=YOY_SAT_FEB2025[i]?'rgba(0,255,179,0.8)':'rgba(255,56,96,0.7)';
+      }),borderRadius:3}
+  ]},
+  options:{responsive:true,maintainAspectRatio:false,
+    interaction:{mode:'index',intersect:false},
+    plugins:{legend:{position:'top',labels:{boxWidth:10,padding:8,font:{size:10}}},tooltip:TT},
+    scales:{x:{grid:{display:false}},y:{grid:{color:'rgba(0,190,255,0.05)'},beginAtZero:true,
+      ticks:{callback:function(v){return v.toLocaleString();}}}}}});
+
+  }, 150);
+}
+</script>
+</body>
+</html>
