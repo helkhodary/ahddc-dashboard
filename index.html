@@ -1,0 +1,1356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AHD Diagnostic Center — Volume Analytics Dashboard 2025 vs 2026</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root {
+    --blue-dark: #1e3a5f;
+    --blue:      #2563EB;
+    --blue-light:#dbeafe;
+    --green:     #059669;
+    --green-l:   #d1fae5;
+    --red:       #DC2626;
+    --red-l:     #fee2e2;
+    --amber:     #D97706;
+    --amber-l:   #fef3c7;
+    --purple:    #7c3aed;
+    --teal:      #0d9488;
+    --gray-bg:   #f1f5f9;
+    --gray-border:#e2e8f0;
+    --gray-text: #64748b;
+    --dark:      #1e293b;
+    --white:     #ffffff;
+    --shadow:    0 2px 12px rgba(0,0,0,0.08);
+    --shadow-md: 0 4px 20px rgba(0,0,0,0.12);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Segoe UI',Arial,sans-serif;background:#eef2f7;color:var(--dark);min-height:100vh;}
+
+  /* HEADER */
+  .header{
+    background:linear-gradient(135deg,#1e3a5f 0%,#2563EB 100%);
+    color:white;padding:18px 32px;
+    display:flex;align-items:center;justify-content:space-between;
+    box-shadow:0 4px 16px rgba(30,58,95,.3);
+  }
+  .header h1{font-size:21px;font-weight:700;letter-spacing:.2px;}
+  .header p{font-size:12px;opacity:.8;margin-top:3px;}
+  .header-right .badge{
+    background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.3);
+    border-radius:20px;padding:5px 14px;font-size:12px;font-weight:500;
+  }
+  .header-right .as-of{font-size:11px;opacity:.65;margin-top:5px;text-align:right;}
+
+  /* TOP NAV */
+  .top-nav{
+    background:var(--white);
+    border-bottom:3px solid var(--gray-border);
+    display:flex;padding:0 32px;gap:2px;
+  }
+  .top-tab{
+    padding:13px 22px;font-size:13px;font-weight:600;cursor:pointer;
+    border-bottom:3px solid transparent;margin-bottom:-3px;
+    color:var(--gray-text);transition:all .2s;white-space:nowrap;
+  }
+  .top-tab.active{border-bottom-color:var(--blue);color:var(--blue);}
+  .top-tab:hover:not(.active){color:var(--dark);background:#f8fafc;}
+  .top-tab.lab-tab.active{border-bottom-color:var(--teal);color:var(--teal);}
+  .top-tab.lab-tab:hover:not(.active){color:var(--teal);}
+  .top-tab.insight-tab.active{border-bottom-color:var(--purple);color:var(--purple);}
+  #tab-april.active{border-bottom-color:var(--purple)!important;color:var(--purple)!important;}
+
+  /* APRIL PROJECTION */
+  .proj-card{background:white;border-radius:12px;padding:18px 22px;box-shadow:var(--shadow);margin-bottom:18px;}
+  .proj-card h3{font-size:13px;font-weight:700;margin-bottom:4px;}
+  .proj-card p{font-size:11px;color:var(--gray-text);margin-bottom:14px;}
+  .proj-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px;}
+  .proj-stat{background:#f8fafc;border-radius:10px;padding:14px 12px;text-align:center;border-top:3px solid var(--blue);}
+  .proj-stat.green{border-top-color:var(--green);}
+  .proj-stat.red{border-top-color:var(--red);}
+  .proj-stat.amber{border-top-color:var(--amber);}
+  .proj-stat.purple{border-top-color:var(--purple);}
+  .proj-stat .lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--gray-text);margin-bottom:6px;}
+  .proj-stat .val{font-size:20px;font-weight:700;color:var(--dark);}
+  .proj-stat .sub{font-size:11px;color:var(--gray-text);margin-top:3px;}
+  .proj-stat .chg{font-size:12px;font-weight:700;margin-top:3px;}
+  .proj-table{width:100%;border-collapse:collapse;font-size:12px;}
+  .proj-table th{background:#f1f5f9;padding:8px 10px;text-align:right;font-size:10.5px;font-weight:700;color:var(--gray-text);text-transform:uppercase;letter-spacing:.4px;border-bottom:2px solid var(--gray-border);}
+  .proj-table th:first-child{text-align:left;}
+  .proj-table td{padding:8px 10px;text-align:right;border-bottom:1px solid var(--gray-border);}
+  .proj-table td:first-child{text-align:left;font-weight:500;}
+  .proj-table tr:last-child td{font-weight:700;background:#f1f5f9;border-bottom:none;}
+  .proj-table tr:hover td{background:#f8fafc;}
+  .on-track{color:var(--green);font-weight:700;}
+  .off-track{color:var(--red);font-weight:700;}
+  .proj-note{font-size:11px;color:#64748b;background:#f0f9ff;border-radius:6px;padding:8px 12px;border-left:3px solid var(--blue);margin-top:10px;}
+  @media(max-width:900px){.proj-grid{grid-template-columns:repeat(2,1fr);}}
+
+  /* SECTION */
+  .section{display:none;}.section.active{display:block;}
+
+  /* CONTENT */
+  .content{padding:22px 32px;}
+
+  /* INSIGHT BANNER */
+  .banner{
+    border-radius:10px;padding:13px 18px;margin-bottom:20px;
+    display:flex;align-items:flex-start;gap:12px;
+  }
+  .banner.blue{background:#eff6ff;border:1px solid #bfdbfe;}
+  .banner.teal{background:#f0fdfa;border:1px solid #99f6e4;}
+  .banner.purple{background:#f5f3ff;border:1px solid #ddd6fe;}
+  .banner-icon{font-size:20px;flex-shrink:0;margin-top:1px;}
+  .banner-text{font-size:13px;line-height:1.7;}
+  .banner.blue .banner-text{color:#1d4ed8;}
+  .banner.teal .banner-text{color:#0f766e;}
+  .banner.purple .banner-text{color:#6d28d9;}
+  .banner-text strong{font-weight:700;}
+
+  /* SECTION DIVIDER */
+  .sec-label{
+    font-size:11px;font-weight:700;text-transform:uppercase;
+    letter-spacing:.8px;color:var(--gray-text);
+    margin:0 0 12px;display:flex;align-items:center;gap:8px;
+  }
+  .sec-label::after{content:'';flex:1;height:1px;background:var(--gray-border);}
+
+  /* KPI GRID */
+  .kpi-grid{display:grid;gap:14px;margin-bottom:20px;}
+  .kpi-grid.cols5{grid-template-columns:repeat(5,1fr);}
+  .kpi-grid.cols4{grid-template-columns:repeat(4,1fr);}
+  .kpi-grid.cols3{grid-template-columns:repeat(3,1fr);}
+  .kpi-card{
+    background:var(--white);border-radius:12px;padding:16px 18px;
+    box-shadow:var(--shadow);border-top:4px solid var(--blue);position:relative;overflow:hidden;
+  }
+  .kpi-card.green{border-top-color:var(--green);}
+  .kpi-card.red{border-top-color:var(--red);}
+  .kpi-card.amber{border-top-color:var(--amber);}
+  .kpi-card.purple{border-top-color:var(--purple);}
+  .kpi-card.teal{border-top-color:var(--teal);}
+  .kpi-label{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--gray-text);margin-bottom:7px;}
+  .kpi-val{font-size:26px;font-weight:700;color:var(--dark);line-height:1;}
+  .kpi-sub{font-size:11px;color:var(--gray-text);margin-top:5px;}
+  .kpi-chg{font-size:12px;font-weight:700;margin-top:4px;}
+  .kpi-chg.up{color:var(--green);} .kpi-chg.down{color:var(--red);} .kpi-chg.flat{color:var(--amber);}
+  .kpi-icon{position:absolute;right:14px;top:14px;font-size:26px;opacity:.12;}
+
+  /* CHARTS */
+  .charts-row{display:grid;gap:18px;margin-bottom:18px;}
+  .cols-11{grid-template-columns:1fr;}
+  .cols-21{grid-template-columns:2fr 1fr;}
+  .cols-12{grid-template-columns:1fr 2fr;}
+  .cols-22{grid-template-columns:1fr 1fr;}
+  .cols-222{grid-template-columns:1fr 1fr 1fr;}
+  .chart-card{background:var(--white);border-radius:12px;padding:18px 22px;box-shadow:var(--shadow);}
+  .chart-card h3{font-size:13px;font-weight:700;color:var(--dark);margin-bottom:3px;}
+  .chart-card p{font-size:11px;color:var(--gray-text);margin-bottom:14px;}
+  .ch{position:relative;}
+
+  /* MOM CARDS */
+  .mom-row{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:18px;}
+  .mom-card{background:var(--white);border-radius:12px;padding:16px;box-shadow:var(--shadow);}
+  .mom-month{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--gray-text);margin-bottom:5px;}
+  .mom-nums{display:flex;align-items:baseline;gap:8px;margin-bottom:8px;}
+  .mom-big{font-size:22px;font-weight:700;color:var(--dark);}
+  .mom-vs{font-size:11px;color:var(--gray-text);}
+  .mom-prev{font-size:13px;color:var(--gray-text);}
+  .mom-bar{height:5px;background:#e2e8f0;border-radius:3px;margin-top:8px;}
+  .mom-fill{height:100%;border-radius:3px;}
+
+  /* PILL */
+  .pill{display:inline-block;padding:3px 8px;border-radius:20px;font-size:11px;font-weight:700;}
+  .pill-up{background:var(--green-l);color:#065f46;}
+  .pill-dn{background:var(--red-l);color:#991b1b;}
+  .pill-fl{background:var(--amber-l);color:#92400e;}
+  .pill-n{background:#f1f5f9;color:#475569;}
+
+  /* TABLE */
+  .tbl-card{background:var(--white);border-radius:12px;box-shadow:var(--shadow);overflow:hidden;margin-bottom:18px;}
+  .tbl-hdr{padding:14px 20px;border-bottom:1px solid var(--gray-border);display:flex;align-items:center;justify-content:space-between;}
+  .tbl-hdr h3{font-size:13px;font-weight:700;}
+  .tbl-legend{display:flex;gap:14px;font-size:11px;color:var(--gray-text);}
+  .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:3px;}
+  table{width:100%;border-collapse:collapse;font-size:12.5px;}
+  thead th{background:#f1f5f9;padding:9px 12px;text-align:right;font-size:11px;font-weight:700;color:var(--gray-text);text-transform:uppercase;letter-spacing:.5px;border-bottom:2px solid var(--gray-border);}
+  thead th:first-child{text-align:left;}
+  tbody tr{border-bottom:1px solid var(--gray-border);transition:background .15s;}
+  tbody tr:hover{background:#f8fafc;}
+  tbody tr:last-child{border-bottom:none;font-weight:700;background:#f1f5f9;}
+  tbody td{padding:9px 12px;text-align:right;}
+  tbody td:first-child{text-align:left;font-weight:500;}
+  .num-up{color:var(--green);font-weight:700;}
+  .num-dn{color:var(--red);font-weight:700;}
+
+  /* INSIGHTS */
+  .ins-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:18px;}
+  .ins-card{background:var(--white);border-radius:12px;padding:18px;box-shadow:var(--shadow);}
+  .ins-card h4{font-size:13px;font-weight:700;margin-bottom:12px;display:flex;align-items:center;gap:8px;}
+  .ins-card ul{list-style:none;}
+  .ins-card li{font-size:12.5px;line-height:1.7;padding:6px 0;border-bottom:1px solid var(--gray-border);display:flex;gap:8px;}
+  .ins-card li:last-child{border-bottom:none;}
+  .li-i{font-size:14px;flex-shrink:0;}
+  .full{grid-column:1/-1;}
+
+  /* FOOTER */
+  .footer{text-align:center;padding:14px;font-size:11px;color:var(--gray-text);border-top:1px solid var(--gray-border);margin-top:8px;}
+
+  /* OVERVIEW DUAL */
+  .dual-kpi{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:20px;}
+  .dual-block{background:var(--white);border-radius:12px;padding:18px 20px;box-shadow:var(--shadow);}
+  .dual-block-hdr{display:flex;align-items:center;gap:10px;margin-bottom:14px;}
+  .dual-block-hdr .icon{width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px;}
+  .icon-mid{background:#dbeafe;}
+  .icon-lab{background:#ccfbf1;}
+  .dual-block-hdr h3{font-size:14px;font-weight:700;}
+  .dual-block-hdr p{font-size:11px;color:var(--gray-text);}
+  .dual-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+  .dual-stat{text-align:center;padding:10px 6px;background:var(--gray-bg);border-radius:8px;}
+  .dual-stat .val{font-size:18px;font-weight:700;}
+  .dual-stat .lbl{font-size:10px;color:var(--gray-text);text-transform:uppercase;letter-spacing:.5px;margin-top:2px;}
+  .dual-stat .chg{font-size:11px;font-weight:700;margin-top:2px;}
+
+  @media(max-width:1100px){.kpi-grid.cols5{grid-template-columns:repeat(3,1fr);}
+    .kpi-grid.cols4{grid-template-columns:repeat(2,1fr);}}
+  @media(max-width:800px){.cols-22,.cols-21,.cols-12,.cols-222{grid-template-columns:1fr;}
+    .ins-grid,.dual-kpi{grid-template-columns:1fr;}.content{padding:14px;}.mom-row{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div>
+    <h1>🏥 AHD Diagnostic Center — Volume Analytics 2025 vs 2026</h1>
+    <p>Clinical Performance Dashboard · Medical Imaging (MID) &amp; Laboratory · Jan–Apr 2026 Complete</p>
+  </div>
+  <div class="header-right">
+    <div class="badge">📅 4 Months Complete | As of Apr 30</div>
+    <div class="as-of">Integrated monthly progression · Source: MID Stats &amp; Lab Reports</div>
+  </div>
+</div>
+
+<!-- TOP NAV -->
+<div class="top-nav">
+  <div class="top-tab active"         onclick="switchTab(this,'overview')">📊 Executive Overview</div>
+  <div class="top-tab"                onclick="switchTab(this,'mid')">🏥 MID — Imaging</div>
+  <div class="top-tab lab-tab"        onclick="switchTab(this,'lab')">🔬 Laboratory</div>
+  <div class="top-tab insight-tab"    onclick="switchTab(this,'insights')">💡 Clinical Insights</div>
+</div>
+
+<!-- ══════════════════════════════════
+     SECTION: EXECUTIVE OVERVIEW
+════════════════════════════════════ -->
+<div id="sec-overview" class="section active">
+<div class="content">
+
+  <div class="banner blue">
+    <div class="banner-icon">💡</div>
+    <div class="banner-text">
+      <strong>4-Month Performance Summary (Jan–Apr 2026 Complete):</strong>
+      AHD Diagnostic Center showed strong trajectory across both divisions with post-Ramadan recovery in April.
+      <strong>Laboratory delivered 730,172 tests</strong> in 4 months (+6.8% vs Jan–Apr 2025),
+      with <strong>April delivering 208,677 tests</strong> (+12.6% vs Apr 2025, strongest month of 2026).
+      <strong>Medical Imaging totaled 41,746 studies</strong> in 4 months (+2.7% YoY), with <strong>April at 11,475</strong> — nearly matching April 2025 (11,378, +0.9% ahead).
+      MRI surged +17.8% in Q1; April's Chemistry peak (160,925 tests) drove lab growth across all sections.
+    </div>
+  </div>
+
+  <!-- Combined Overview -->
+  <div class="dual-kpi">
+    <div class="dual-block">
+      <div class="dual-block-hdr">
+        <div class="icon icon-mid">🏥</div>
+        <div><h3>Medical Imaging (MID)</h3><p>Radiology &amp; Diagnostic Imaging · Q1 Jan–Mar</p></div>
+      </div>
+      <div class="dual-stats">
+        <div class="dual-stat">
+          <div class="val">30,271</div>
+          <div class="lbl">Q1 2026 Studies</div>
+          <div class="chg flat">≈ Flat YoY</div>
+        </div>
+        <div class="dual-stat">
+          <div class="val">30,275</div>
+          <div class="lbl">Jan–Apr 2025 Studies</div>
+          <div class="chg" style="color:var(--gray-text);">Prior Year</div>
+        </div>
+        <div class="dual-stat">
+          <div class="val" style="color:var(--green);">MRI</div>
+          <div class="lbl">Top Modality</div>
+          <div class="chg up">▲ +17.8%</div>
+        </div>
+      </div>
+    </div>
+    <div class="dual-block">
+      <div class="dual-block-hdr">
+        <div class="icon icon-lab">🔬</div>
+        <div><h3>Laboratory</h3><p>All Lab Sections · Jan–Apr 2026</p></div>
+      </div>
+      <div class="dual-stats">
+        <div class="dual-stat">
+          <div class="val">521,495</div>
+          <div class="lbl">Q1 2026 Tests</div>
+          <div class="chg up">▲ +5.2% YoY</div>
+        </div>
+        <div class="dual-stat">
+          <div class="val">495,172</div>
+          <div class="lbl">Jan–Apr 2025 Tests</div>
+          <div class="chg" style="color:var(--gray-text);">Prior Year</div>
+        </div>
+        <div class="dual-stat">
+          <div class="val" style="color:var(--teal);">Chem.</div>
+          <div class="lbl">Top Section</div>
+          <div class="chg" style="color:var(--teal);">393K tests</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- KPIs Row -->
+  <div class="sec-label">Key Performance Indicators — Jan–Apr 2026 vs Jan–Apr 2025</div>
+  <div class="kpi-grid cols5" style="margin-bottom:20px;">
+    <div class="kpi-card">
+      <div class="kpi-icon">🏥</div>
+      <div class="kpi-label">MID Q1 2026</div>
+      <div class="kpi-val">30,271</div>
+      <div class="kpi-sub">Total imaging studies</div>
+      <div class="kpi-chg flat">≈ −0.01% vs 2025</div>
+    </div>
+    <div class="kpi-card teal">
+      <div class="kpi-icon">🔬</div>
+      <div class="kpi-label">Lab Q1 2026</div>
+      <div class="kpi-val">521,495</div>
+      <div class="kpi-sub">Total lab tests</div>
+      <div class="kpi-chg up">▲ +5.2% vs 2025</div>
+    </div>
+    <div class="kpi-card green">
+      <div class="kpi-icon">🏆</div>
+      <div class="kpi-label">Best MID Modality</div>
+      <div class="kpi-val">MRI</div>
+      <div class="kpi-sub">3,298 → 3,885 studies</div>
+      <div class="kpi-chg up">▲ +17.8% YTD</div>
+    </div>
+    <div class="kpi-card red">
+      <div class="kpi-icon">⚠️</div>
+      <div class="kpi-label">Biggest MID Decline</div>
+      <div class="kpi-val">Fluoro</div>
+      <div class="kpi-sub">546 → 423 studies</div>
+      <div class="kpi-chg down">▼ −22.5% YTD</div>
+    </div>
+    <div class="kpi-card amber">
+      <div class="kpi-icon">📈</div>
+      <div class="kpi-label">Lab Jan YoY Growth</div>
+      <div class="kpi-val">+8.1%</div>
+      <div class="kpi-sub">Best lab month in Q1</div>
+      <div class="kpi-chg up">▲ 173K → 187K</div>
+    </div>
+  </div>
+
+  <!-- Combined Chart -->
+  <div class="charts-row cols-22">
+    <div class="chart-card">
+      <h3>MID Monthly Volume — 2025 vs 2026 (Q1)</h3>
+      <p>Total imaging studies per month — Jan, Feb, Mar only</p>
+      <div class="ch" style="height:240px;"><canvas id="ov-mid-chart"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <h3>Lab Monthly Volume — 2025 vs 2026 (Q1)</h3>
+      <p>Total laboratory tests per month — Jan, Feb, Mar only</p>
+      <div class="ch" style="height:240px;"><canvas id="ov-lab-chart"></canvas></div>
+    </div>
+  </div>
+
+  <div class="charts-row cols-22">
+    <div class="chart-card">
+      <h3>MID Modality Mix — Jan–Apr 2026</h3>
+      <p>Share of studies by imaging modality</p>
+      <div class="ch" style="height:240px;"><canvas id="ov-mid-donut"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <h3>Lab Section Mix — Jan–Apr 2026 (Excl. Chemistry)</h3>
+      <p>Share of non-Chemistry tests · Chemistry (~75%) shown separately to preserve scale</p>
+      <div class="ch" style="height:240px;"><canvas id="ov-lab-donut"></canvas></div>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<!-- ══════════════════════════════════
+     SECTION: MID IMAGING
+════════════════════════════════════ -->
+<div id="sec-mid" class="section">
+<div class="content">
+
+  <div class="banner blue">
+    <div class="banner-icon">🏥</div>
+    <div class="banner-text">
+      <strong>MID — Medical Imaging Jan–Apr 2026 (Complete 4 Months):</strong>
+      Q1 2026 held steady at 30,271 studies (−0.01% vs Q1 2025), with <strong>April surging to 11,475 studies</strong> — exceeding April 2025 (11,378) by +97 studies (+0.9% YoY).
+      <strong>MRI leads YoY growth</strong>: Q1 +17.8%, April continues momentum at +33.2% vs March.
+      <strong>4-month total: 41,746 studies</strong> (+2.7% vs Jan–Apr 2025).
+      April success driven by post-Ramadan demand recovery and operational efficiency gains.
+    </div>
+  </div>
+
+  <!-- KPIs -->
+  <div class="kpi-grid cols4" style="margin-bottom:18px;">
+    <div class="kpi-card">
+      <div class="kpi-icon">📋</div>
+      <div class="kpi-label">4-Month 2026 Total</div>
+      <div class="kpi-val">41,746</div>
+      <div class="kpi-sub">Jan + Feb + Mar + Apr 2026</div>
+      <div class="kpi-chg up">▲ +2.7% vs Jan-Apr 2025</div>
+    </div>
+    <div class="kpi-card green">
+      <div class="kpi-icon">🏆</div>
+      <div class="kpi-label">April 2026 Performance</div>
+      <div class="kpi-val">11,475</div>
+      <div class="kpi-sub">April 1–30 complete month</div>
+      <div class="kpi-chg up">▲ +0.9% vs Apr 2025 (11,378)</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-icon">📈</div>
+      <div class="kpi-label">April vs March</div>
+      <div class="kpi-val">+2,497</div>
+      <div class="kpi-sub">8,978 → 11,475 studies</div>
+      <div class="kpi-chg up">▲ +27.8% MoM recovery</div>
+    </div>
+    <div class="kpi-card amber">
+      <div class="kpi-icon">📅</div>
+      <div class="kpi-label">Strongest Month</div>
+      <div class="kpi-val">April 2026</div>
+      <div class="kpi-sub">11,475 studies</div>
+      <div class="kpi-chg up">▲ Post-Ramadan surge</div>
+    </div>
+  </div>
+
+  <!-- MoM Cards -->
+  <div class="sec-label">Month-by-Month Comparison — 2025 vs 2026 (Jan–Apr Complete)</div>
+  <div class="mom-row">
+    <div class="mom-card">
+      <div class="mom-month">January</div>
+      <div class="mom-nums">
+        <span class="mom-big">10,921</span>
+        <span class="mom-vs">2026 vs</span>
+        <span class="mom-prev">10,419 (2025)</span>
+      </div>
+      <span class="pill pill-up">▲ +502 (+4.8%)</span>
+      <div class="mom-bar"><div class="mom-fill" style="width:100%;background:var(--green);"></div></div>
+    </div>
+    <div class="mom-card">
+      <div class="mom-month">February</div>
+      <div class="mom-nums">
+        <span class="mom-big">10,372</span>
+        <span class="mom-vs">2026 vs</span>
+        <span class="mom-prev">10,311 (2025)</span>
+      </div>
+      <span class="pill pill-up">▲ +61 (+0.6%)</span>
+      <div class="mom-bar"><div class="mom-fill" style="width:12%;background:var(--green);"></div></div>
+    </div>
+    <div class="mom-card">
+      <div class="mom-month">March</div>
+      <div class="mom-nums">
+        <span class="mom-big">8,978</span>
+        <span class="mom-vs">2026 vs</span>
+        <span class="mom-prev">9,545 (2025)</span>
+      </div>
+      <span class="pill pill-dn">▼ −567 (−5.9%)</span>
+      <div class="mom-bar"><div class="mom-fill" style="width:59%;background:var(--red);"></div></div>
+    </div>
+    <div class="mom-card" style="border-top:3px solid #059669;">
+      <div class="mom-month">April</div>
+      <div class="mom-nums">
+        <span class="mom-big">11,475</span>
+        <span class="mom-vs">2026 vs</span>
+        <span class="mom-prev">11,378 (2025)</span>
+      </div>
+      <span class="pill pill-up">▲ +97 (+0.9%)</span>
+      <div class="mom-bar"><div class="mom-fill" style="width:100%;background:#059669;"></div></div>
+    </div>
+  </div>
+
+  <!-- Charts -->
+  <div class="charts-row cols-11">
+    <div class="chart-card">
+      <h3>Monthly Volume Comparison — 2025 vs 2026 (Jan–Apr Complete)</h3>
+      <p>All imaging modalities combined · 4-month trend shows April recovery</p>
+      <div class="ch" style="height:260px;"><canvas id="mid-trend"></canvas></div>
+    </div>
+  </div>
+
+  <div class="charts-row cols-22">
+    <div class="chart-card">
+      <h3>Modality Volume — Jan–Apr 2025 vs 2026</h3>
+      <p>4-month totals (Jan–Apr) · 2025 vs 2026</p>
+      <div class="ch" style="height:280px;"><canvas id="mid-mod-bar"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <h3>YTD Growth Rate by Modality (%)</h3>
+      <p>Jan–Apr 2026 vs Jan–Apr 2025 percentage change</p>
+      <div class="ch" style="height:280px;"><canvas id="mid-growth-bar"></canvas></div>
+    </div>
+  </div>
+
+  <div class="charts-row cols-22">
+    <div class="chart-card">
+      <h3>MRI Monthly — 2025 vs 2026</h3>
+      <p>Strongest growth · MRI leads 4-month YTD</p>
+      <div class="ch" style="height:210px;"><canvas id="mid-mri"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <h3>CT Monthly — 2025 vs 2026</h3>
+      <p>4-month trend Jan–Apr 2025 vs 2026</p>
+      <div class="ch" style="height:210px;"><canvas id="mid-ct"></canvas></div>
+    </div>
+  </div>
+
+  <div class="charts-row cols-22">
+    <div class="chart-card">
+      <h3>Ultrasound Monthly — 2025 vs 2026</h3>
+      <p>4-month trend Jan–Apr 2025 vs 2026</p>
+      <div class="ch" style="height:210px;"><canvas id="mid-us"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <h3>X-Ray Monthly — 2025 vs 2026</h3>
+      <p>Highest volume modality · −5.6% Q1 YTD</p>
+      <div class="ch" style="height:210px;"><canvas id="mid-xray"></canvas></div>
+    </div>
+  </div>
+
+  <div class="charts-row cols-222">
+    <div class="chart-card">
+      <h3>IR Monthly — 2025 vs 2026</h3>
+      <p>+3.4% Q1 YTD</p>
+      <div class="ch" style="height:190px;"><canvas id="mid-ir"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <h3>PET-CT &amp; NM — 2025 vs 2026</h3>
+      <p>Specialty nuclear modalities</p>
+      <div class="ch" style="height:190px;"><canvas id="mid-petn"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <h3>DEXA &amp; Fluoro — 2025 vs 2026</h3>
+      <p>Declining modalities requiring attention</p>
+      <div class="ch" style="height:190px;"><canvas id="mid-dfx"></canvas></div>
+    </div>
+  </div>
+
+  <!-- Modality Table -->
+  <div class="tbl-card">
+    <div class="tbl-hdr">
+      <h3>Modality Detail Table — Jan–Apr 2025 vs 2026 (4 Months Complete)</h3>
+      <div class="tbl-legend">
+        <span><span class="dot" style="background:#2563EB;"></span>2025</span>
+        <span><span class="dot" style="background:#059669;"></span>2026</span>
+      </div>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Modality</th>
+          <th>Jan-25</th><th>Jan-26</th><th>Δ Jan</th>
+          <th>Feb-25</th><th>Feb-26</th><th>Δ Feb</th>
+          <th>Mar-25</th><th>Mar-26</th><th>Δ Mar</th>
+          <th>Apr-25</th><th>Apr-26</th><th>Δ Apr</th>
+          <th>Jan–Apr 25</th><th>Jan–Apr 26</th><th>YoY Δ%</th>
+        </tr>
+      </thead>
+      <tbody id="mid-tbl"></tbody>
+    </table>
+  </div>
+
+  <!-- Multi-year context -->
+  <div class="charts-row cols-22">
+    <div class="chart-card">
+      <h3>Annual Volume — 2023 to 2025 (Full Year)</h3>
+      <p>Year-over-year growth trajectory for AHD Imaging</p>
+      <div class="ch" style="height:220px;"><canvas id="mid-annual"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <h3>Quarterly Volumes — 2023, 2024, 2025 &amp; 2026 (Q1 complete + Apr)</h3>
+      <p>Q1–Q4 by year · 2026 Q1 complete + April shown in Q2</p>
+      <div class="ch" style="height:220px;"><canvas id="mid-quarterly"></canvas></div>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<!-- ══════════════════════════════════
+     SECTION: LABORATORY
+════════════════════════════════════ -->
+<div id="sec-lab" class="section">
+<div class="content">
+
+  <div class="banner teal">
+    <div class="banner-icon">🔬</div>
+    <div class="banner-text">
+      <strong>Laboratory Jan–Apr 2026 (Complete 4 Months):</strong>
+      <strong>4-month total: 730,172 tests</strong> (+6.8% vs Jan–Apr 2025). Q1 2026 was +5.2% (521,495 tests), with <strong>April delivering a record 208,677 tests</strong> — outpacing April 2025 (185,303) by +12.6% YoY.
+      <strong>Chemistry leads growth</strong>: Q1 +5.8%, April surges to 160,925 tests (+31.9% vs March, strongest month in 2026).
+      <strong>Hematology and Endocrinology show strong momentum</strong> — both trending +15–27% in April. Post-Ramadan recovery confirmed across all major sections.
+    </div>
+  </div>
+
+  <!-- Lab KPIs -->
+  <div class="kpi-grid cols4" style="margin-bottom:18px;">
+    <div class="kpi-card teal">
+      <div class="kpi-icon">🧪</div>
+      <div class="kpi-label">4-Month 2026 Total</div>
+      <div class="kpi-val">730,172</div>
+      <div class="kpi-sub">Jan–Apr 2026</div>
+      <div class="kpi-chg up">▲ +6.8% vs Jan–Apr 2025</div>
+    </div>
+    <div class="kpi-card green">
+      <div class="kpi-icon">🏆</div>
+      <div class="kpi-label">April 2026 Performance</div>
+      <div class="kpi-val">208,677</div>
+      <div class="kpi-sub">April 1–30 complete</div>
+      <div class="kpi-chg up">▲ +12.6% vs Apr 2025 (185,303)</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-icon">📈</div>
+      <div class="kpi-label">April vs March</div>
+      <div class="kpi-val">+49,996</div>
+      <div class="kpi-sub">158,681 → 208,677 tests</div>
+      <div class="kpi-chg up">▲ +31.5% MoM recovery</div>
+    </div>
+    <div class="kpi-card amber">
+      <div class="kpi-icon">🧬</div>
+      <div class="kpi-label">April Chemistry</div>
+      <div class="kpi-val">160,925</div>
+      <div class="kpi-sub">Strongest month in 2026</div>
+      <div class="kpi-chg up">▲ +31.9% vs March</div>
+    </div>
+  </div>
+
+  <!-- Lab MoM -->
+  <div class="sec-label">Month-by-Month Lab Volume — 2025 vs 2026 (Jan–Apr Complete)</div>
+  <div class="mom-row">
+    <div class="mom-card">
+      <div class="mom-month">January</div>
+      <div class="mom-nums">
+        <span class="mom-big">186,957</span>
+        <span class="mom-vs">2026 vs</span>
+        <span class="mom-prev">173,041 (2025)</span>
+      </div>
+      <span class="pill pill-up">▲ +13,961 (+8.0%)</span>
+      <div class="mom-bar"><div class="mom-fill" style="width:100%;background:var(--teal);"></div></div>
+    </div>
+    <div class="mom-card">
+      <div class="mom-month">February</div>
+      <div class="mom-nums">
+        <span class="mom-big">175,857</span>
+        <span class="mom-vs">2026 vs</span>
+        <span class="mom-prev">166,676 (2025)</span>
+      </div>
+      <span class="pill pill-up">▲ +9,181 (+5.5%)</span>
+      <div class="mom-bar"><div class="mom-fill" style="width:68%;background:var(--teal);"></div></div>
+    </div>
+    <div class="mom-card">
+      <div class="mom-month">March</div>
+      <div class="mom-nums">
+        <span class="mom-big">158,681</span>
+        <span class="mom-vs">2026 vs</span>
+        <span class="mom-prev">155,455 (2025)</span>
+      </div>
+      <span class="pill pill-up">▲ +3,226 (+2.1%)</span>
+      <div class="mom-bar"><div class="mom-fill" style="width:25%;background:var(--teal);"></div></div>
+    </div>
+    <div class="mom-card" style="border-top:3px solid #059669;">
+      <div class="mom-month">April</div>
+      <div class="mom-nums">
+        <span class="mom-big">208,677</span>
+        <span class="mom-vs">2026 vs</span>
+        <span class="mom-prev">185,303 (2025)</span>
+      </div>
+      <span class="pill pill-up">▲ +23,374 (+12.6%)</span>
+      <div class="mom-bar"><div class="mom-fill" style="width:100%;background:#059669;"></div></div>
+    </div>
+  </div>
+
+  <!-- Lab Charts -->
+  <div class="charts-row cols-22">
+    <div class="chart-card">
+      <h3>Total Lab Volume — 2025 vs 2026 (Jan–Apr Complete)</h3>
+      <p>All sections combined · Jan–Apr 2025 vs 2026</p>
+      <div class="ch" style="height:240px;"><canvas id="lab-trend"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <h3>Patient Type Breakdown — Q1 2026</h3>
+      <p>Emergency vs Inpatient vs Outpatient tests</p>
+      <div class="ch" style="height:240px;"><canvas id="lab-ipop"></canvas></div>
+    </div>
+  </div>
+
+  <!-- Chemistry Spotlight (separated to avoid scale distortion) -->
+  <div class="sec-label">Chemistry — Separated to Preserve Scale (Jan–Apr Complete)</div>
+  <div class="charts-row cols-22">
+    <div class="chart-card" style="border-left:4px solid #0d9488;">
+      <h3>🧪 Chemistry Monthly Volume — 2026 (Jan–Apr)</h3>
+      <p>Displayed separately · Chemistry accounts for ~75% of all lab tests and distorts combined scale</p>
+      <div class="ch" style="height:230px;"><canvas id="lab-chem"></canvas></div>
+    </div>
+    <div class="chart-card" style="border-left:4px solid #0d9488;">
+      <h3>🧪 Chemistry — MoM &amp; YoY Context (Jan–Apr 2026)</h3>
+      <p>Monthly breakdown with growth indicators · April is strongest month in 2026</p>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;margin-bottom:14px;">
+        <div style="text-align:center;padding:14px 8px;background:#f0fdfa;border-radius:8px;">
+          <div style="font-size:18px;font-weight:700;color:#0d9488;">140,075</div>
+          <div style="font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-top:3px;">January 2026</div>
+          <div style="font-size:11px;font-weight:700;color:#059669;margin-top:3px;">▲ +8.3% YoY</div>
+        </div>
+        <div style="text-align:center;padding:14px 8px;background:#f0fdfa;border-radius:8px;">
+          <div style="font-size:18px;font-weight:700;color:#0d9488;">131,749</div>
+          <div style="font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-top:3px;">February 2026</div>
+          <div style="font-size:11px;font-weight:700;color:#DC2626;margin-top:3px;">▼ −5.9% MoM</div>
+        </div>
+        <div style="text-align:center;padding:14px 8px;background:#f0fdfa;border-radius:8px;">
+          <div style="font-size:18px;font-weight:700;color:#0d9488;">122,028</div>
+          <div style="font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-top:3px;">March 2026</div>
+          <div style="font-size:11px;font-weight:700;color:#059669;margin-top:3px;">▲ +6.1% vs Mar 2025</div>
+        </div>
+        <div style="text-align:center;padding:14px 8px;background:#f0fdfa;border-radius:8px;border-top:3px solid #059669;">
+          <div style="font-size:18px;font-weight:700;color:#0d9488;">160,925</div>
+          <div style="font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-top:3px;">April 2026</div>
+          <div style="font-size:11px;font-weight:700;color:#059669;margin-top:3px;">▲ +16.1% vs Apr 2025</div>
+        </div>
+        <div style="text-align:center;padding:14px 8px;background:#f0fdfa;border-radius:8px;">
+          <div style="font-size:18px;font-weight:700;color:#0d9488;">122,028</div>
+          <div style="font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-top:3px;">March 2026</div>
+          <div style="font-size:11px;font-weight:700;color:#DC2626;margin-top:3px;">▼ −7.4% MoM</div>
+        </div>
+      </div>
+      <div style="font-size:12px;color:#0f766e;background:#ccfbf1;border-radius:6px;padding:8px 12px;">
+        📌 Q1 2026 Chemistry Total: <strong>393,852 tests</strong> · Q1 Share: <strong>75.5%</strong> of all lab volume ·
+        MoM trend is declining through Q1 (expected seasonal pattern — January typically peaks).
+      </div>
+    </div>
+  </div>
+
+  <!-- All other sections (Chemistry excluded) -->
+  <div class="sec-label">All Other Lab Sections — Excluding Chemistry</div>
+  <div class="charts-row cols-11">
+    <div class="chart-card">
+      <h3>Lab Section Volume — Q1 2026 (Excluding Chemistry)</h3>
+      <p>Total tests per section · Chemistry removed to reveal true relative scale of remaining sections</p>
+      <div class="ch" style="height:280px;"><canvas id="lab-section-bar"></canvas></div>
+    </div>
+  </div>
+
+  <div class="charts-row cols-22">
+    <div class="chart-card">
+      <h3>High-Volume Sections — Monthly Trends (Excl. Chemistry)</h3>
+      <p>Hematology, POC, Endocrinology, Micro &amp; others — Jan, Feb, Mar, Apr 2026</p>
+      <div class="ch" style="height:260px;"><canvas id="lab-section-trend"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <h3>Lower-Volume Sections — Monthly Trends</h3>
+      <p>Molecular, Serology, Send Out, Coagulation &amp; Blood Bank — Jan, Feb, Mar, Apr 2026</p>
+      <div class="ch" style="height:260px;"><canvas id="lab-section-small"></canvas></div>
+    </div>
+  </div>
+
+  <!-- Anatomic Pathology -->
+  <div class="charts-row cols-22">
+    <div class="chart-card">
+      <h3>Anatomic Pathology — 2025 vs 2026 (Q1)</h3>
+      <p>Histopathology workload comparison</p>
+      <div class="ch" style="height:220px;"><canvas id="lab-ap"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <h3>Cytopathology — 2025 vs 2026 (Q1)</h3>
+      <p>Cytology specimens comparison</p>
+      <div class="ch" style="height:220px;"><canvas id="lab-cyto"></canvas></div>
+    </div>
+  </div>
+
+  <!-- Satellite + Outreach -->
+  <div class="sec-label">Satellite Clinics &amp; Outreach</div>
+  <div class="charts-row cols-22">
+    <div class="chart-card">
+      <h3>Satellite Clinic Lab Orders — Jan, Feb, Mar 2026</h3>
+      <p>Test orders by satellite location · Jan data from chart series</p>
+      <div class="ch" style="height:240px;"><canvas id="lab-sat"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <h3>Outreach Referrals — 2025 vs 2026 (Q1)</h3>
+      <p>External referral volumes with YoY comparison</p>
+      <div class="ch" style="height:240px;"><canvas id="lab-outreach"></canvas></div>
+    </div>
+  </div>
+
+  <!-- Lab Table -->
+  <div class="tbl-card">
+    <div class="tbl-hdr">
+      <h3>Laboratory Section Detail — Jan–Apr 2026 with Month-over-Month Change</h3>
+      <div class="tbl-legend"><span>% Growth = Apr vs Mar 2026 · 4-Month total includes April</span></div>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Section</th>
+          <th>Jan-26</th><th>Feb-26</th><th>Mar-26</th><th>Apr-26</th>
+          <th>4-Month Total</th><th>Mar→Apr MoM</th><th>Share</th>
+        </tr>
+      </thead>
+      <tbody id="lab-tbl"></tbody>
+    </table>
+  </div>
+
+  <!-- Science Park Table -->
+  <div class="tbl-card">
+    <div class="tbl-hdr">
+      <h3>Science Park Lab — Feb, Mar &amp; Apr 2026</h3>
+      <div class="tbl-legend"><span>Satellite laboratory volumes · Mar→Apr MoM change</span></div>
+    </div>
+    <table>
+      <thead>
+        <tr><th>Section</th><th>Feb-26</th><th>Mar-26</th><th>Apr-26</th><th>Mar→Apr Chg</th></tr>
+      </thead>
+      <tbody id="lab-sp-tbl"></tbody>
+    </table>
+  </div>
+
+</div>
+</div>
+
+<!-- ══════════════════════════════════
+     SECTION: INSIGHTS
+════════════════════════════════════ -->
+<div id="sec-insights" class="section">
+<div class="content">
+
+  <div class="banner purple">
+    <div class="banner-icon">💡</div>
+    <div class="banner-text">
+      <strong>Clinical Insights &amp; Recommendations — Jan–Apr 2026 (4 Months Complete):</strong>
+      Analysis covers Medical Imaging (MID) and Laboratory performance for January–April 2026 vs same period 2025.
+      <strong>April was the standout month</strong> — MID recovered strongly to 11,475 studies (+27.8% vs March, +0.9% vs Apr 2025), and Lab delivered its highest month of 2026 at 208,677 tests (+31.5% vs March, +12.6% vs Apr 2025).
+      Post-Ramadan demand surge confirmed across all major sections and modalities.
+    </div>
+  </div>
+
+  <div class="ins-grid">
+    <div class="ins-card">
+      <h4>🟢 MID — Growth Drivers (Jan–Apr)</h4>
+      <ul>
+        <li><span class="li-i">🥇</span><strong>MRI — Strongest April of 2026 (1,509):</strong> Jan 1,419 → Feb 1,334 → Mar 1,132 → Apr 1,509. April +33.2% vs March, +26.5% vs Apr 2025 (1,193). Sustained growth confirms rising referral demand.</li>
+        <li><span class="li-i">🏅</span><strong>IR-CathLab April: 39 studies (+200% vs Apr 2025 at 13):</strong> Q1 nearly doubled YoY. April consolidates the new elevated baseline.</li>
+        <li><span class="li-i">📊</span><strong>CT April Recovery (+24.1% vs March):</strong> Bounced to 1,345 from March low (1,084). YoY +11.7% vs Apr 2025 (1,204).</li>
+        <li><span class="li-i">🏥</span><strong>Science Park MID Surge (+68.2% MoM in April):</strong> 1,009 in March → 1,696 in April. SP now 14.8% of total MID, up from 11.2%. Strong satellite growth signal.</li>
+        <li><span class="li-i">🔭</span><strong>Nuclear Medicine April: 108 vs 92 in March (+17.4%).</strong> PET-CT holding at 111 vs 112 in Apr 2025 (−0.9%) — stable oncology pipeline.</li>
+      </ul>
+    </div>
+
+    <div class="ins-card">
+      <h4>🔴 MID — Areas Needing Action (Jan–Apr)</h4>
+      <ul>
+        <li><span class="li-i">⚠️</span><strong>Ultrasound YoY Gap Persists:</strong> April 2,884 vs Apr 2025 3,752 (−23.1% YoY). Despite April MoM recovery (+18%), the YoY deficit is the largest absolute gap in MID. Satellite US down −28.1%. Referral pipeline review needed urgently.</li>
+        <li><span class="li-i">⚠️</span><strong>X-Ray Still Below 2025:</strong> April 3,490 vs Apr 2025 4,081 (−14.5% YoY). Q1 was −5.6%. The YoY gap is widening — X-Ray is the single biggest absolute volume risk across the 4-month period.</li>
+        <li><span class="li-i">⚠️</span><strong>DEXA Structural Decline:</strong> Jan 233 → Feb 176 → Mar 150 → Apr 238. April partially recovered but still −19.3% below Apr 2025 (295). Endocrinology/Ortho referral pipeline requires sustained attention.</li>
+        <li><span class="li-i">📉</span><strong>Fluoroscopy 4-Month Trend:</strong> Jan 158 → Feb 122 → Mar 143 → Apr 147. Slight stabilisation in April but still −20.5% below Apr 2025 (185). Scope change context should be reviewed for accurate benchmarking.</li>
+      </ul>
+    </div>
+
+    <div class="ins-card">
+      <h4>🟢 Laboratory — Growth &amp; Strengths (Jan–Apr)</h4>
+      <ul>
+        <li><span class="li-i">🥇</span><strong>April: Strongest Lab Month of 2026 — 208,677 tests:</strong> +31.5% vs March (158,681) and +12.6% vs Apr 2025 (185,303). Chemistry (+31.9%), Endocrinology (+49.4%), Immunology (+52.7%), Hematology (+24.3%) all surged — broad-based post-Ramadan recovery.</li>
+        <li><span class="li-i">🧪</span><strong>Chemistry April Record — 160,925 tests:</strong> +16.1% YoY vs Apr 2025 (138,603). 4-month Chemistry total: 554,777 tests — holds 75.9% share of all lab tests across the period.</li>
+        <li><span class="li-i">📊</span><strong>4-Month Lab Total: 730,172 tests (+6.8% vs Jan–Apr 2025).</strong> Every month in 2026 exceeded the 2025 comparative. Consistent growth trajectory confirms structural demand increase.</li>
+        <li><span class="li-i">📈</span><strong>Endocrinology April: 10,738 tests (+49.4% vs March, +26.6% vs Apr 2025).</strong> Strongest April performance across all non-Chemistry sections. Reflects strong post-Ramadan hormone testing demand.</li>
+        <li><span class="li-i">🏥</span><strong>Outreach Referrals: Jan 271 → Feb 316 → Mar 502 → Apr ~600.</strong> Consistent upward trajectory. Must be sustained and accelerated to close the gap with 2025 benchmarks.</li>
+      </ul>
+    </div>
+
+    <div class="ins-card">
+      <h4>🔴 Laboratory — Concerns &amp; Watch Items (Jan–Apr)</h4>
+      <ul>
+        <li><span class="li-i">⚠️</span><strong>Molecular Persistent Decline:</strong> Jan 2,444 → Feb 2,294 → Mar 1,295 → Apr 1,474. Despite April partial recovery, April is −39.6% below Apr 2025 (2,438). 4-month Molecular total down ~24% YoY. This is now structural — not a one-month anomaly. MSR_2110_02146 (Molecular Technologist, Apr 2026 budget) must be filled immediately.</li>
+        <li><span class="li-i">⚠️</span><strong>POC Structural Decline:</strong> Jan 11,098 → Feb 9,807 → Mar 6,348 → Apr 8,308. April recovered vs March but still −25.0% below Apr 2025 (11,076). 4-month POC total down ~22% YoY. ER/urgent care utilization patterns should be reviewed.</li>
+        <li><span class="li-i">📉</span><strong>Blood Bank April: 1,212 vs Apr 2025: 1,324 (−8.5% YoY).</strong> Consistently below 2025 across all 4 months. Inpatient surgical volumes or blood product ordering patterns may have changed.</li>
+        <li><span class="li-i">📉</span><strong>Satellite Clinic Divergence:</strong> MSC and DHC declining both MoM and YoY across Q1 and into April. NSC and ABC outperforming. Root cause analysis needed for underperforming clinics — may reflect staffing, competition, or patient flow changes.</li>
+      </ul>
+    </div>
+
+    <div class="ins-card full">
+      <h4>🎯 Top 6 Recommended Actions — Based on Jan–Apr 2026 Complete Data</h4>
+      <ul>
+        <li><span class="li-i">1️⃣</span><strong>Protect &amp; Grow MRI Momentum:</strong> MRI April was the best month of 2026 at 1,509 studies (+26.5% YoY). Assess additional slot capacity, extended hours, and protocol optimisation. MRI should be the strategic imaging growth driver through Q2–Q3 2026.</li>
+        <li><span class="li-i">2️⃣</span><strong>Urgent: Address Ultrasound YoY Gap (−23.1% April YoY):</strong> The largest absolute volume deficit across MID. Satellite US down −28.1%. Conduct a referral source audit — identify the top 20 referring physicians who have reduced US orders. Deploy targeted outreach within 30 days.</li>
+        <li><span class="li-i">3️⃣</span><strong>X-Ray Referral Recovery Initiative:</strong> YoY gap widened to −14.5% in April. With X-Ray representing ~30% of total imaging volume, a targeted referral recovery and scheduling accessibility review is critical.</li>
+        <li><span class="li-i">4️⃣</span><strong>Sustain April Lab Momentum into May:</strong> April's 208,677 tests is a post-Ramadan peak that may normalise in May. Monitor Chemistry, Endocrinology, and Immunology weekly to ensure volumes hold above March baselines and the April trajectory is sustained.</li>
+        <li><span class="li-i">5️⃣</span><strong>Escalate Molecular Resolution:</strong> 4-month total down ~24% vs prior year. April 1,474 vs Apr 2025 2,438 (−39.6%). This is now a structural deficit. MSR_2110_02146 (Molecular Technologist, April 2026 budget) is overdue and must be filled immediately.</li>
+        <li><span class="li-i">6️⃣</span><strong>Science Park Scale-Up:</strong> SP MID surged +68.2% MoM in April (1,696 studies). SP Lab also growing strongly. The satellite is meeting suppressed demand — evaluate staffing, equipment, and scheduling capacity increases at SP to capitalise on this accelerating growth.</li>
+      </ul>
+    </div>
+
+    <div class="ins-card full">
+      <h4>📈 Multi-Year Growth Context — AHD Diagnostic Center</h4>
+      <ul>
+        <li><span class="li-i">📌</span><strong>2023 Imaging: 85,766 studies</strong> — Baseline year.</li>
+        <li><span class="li-i">📌</span><strong>2024 Imaging: 106,738 studies (+24.4%)</strong> — Exceptional expansion. MRI +28.7%, CT +19.8%, US +25.0%.</li>
+        <li><span class="li-i">📌</span><strong>2025 Imaging: 115,833 studies (+8.5%)</strong> — Sustainable growth. IR accelerated (+30.7%), PET-CT +17.1%.</li>
+        <li><span class="li-i">📌</span><strong>Jan–Apr 2026 Imaging: 41,746 studies (+2.7% vs Jan–Apr 2025):</strong> Q1 was flat (−0.01%) but April recovered to +0.9% YoY (11,475 vs 11,378). April confirms the volume floor has been reached and upward recovery is underway.</li>
+        <li><span class="li-i">📌</span><strong>Jan–Apr 2026 Lab: 730,172 tests (+6.8% vs Jan–Apr 2025):</strong> Lab growth is consistent and broad-based. April's 208,677 tests is the strongest month of 2026 and the clearest indicator of post-Ramadan demand normalisation.</li>
+        <li><span class="li-i">🔑</span><strong>Key Takeaway:</strong> After Q1 imaging stagnation (driven by March Ramadan suppression), April's recovery across both divisions confirms that demand fundamentals are strong. Priority: sustain MRI and Chemistry growth, close the Ultrasound and Molecular gaps, and capitalise on Science Park's accelerating performance heading into Q2 2026.</li>
+      </ul>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<!-- FOOTER -->
+<div class="footer">
+  AHD Diagnostic Center · Clinical Volume Analytics Dashboard · Jan–Apr 2026 Complete (4 Months) · Source: MID Stats &amp; Laboratory Report April 2026
+</div>
+
+<script>
+// ════════════════════════════════════════════
+// SHARED DATA
+// ════════════════════════════════════════════
+const M3 = ['January','February','March'];
+const M4 = ['January','February','March','April'];
+const BLU = '#2563EB', GRN = '#059669', TL = '#0d9488';
+const GRID_COLOR = '#f1f5f9';
+
+function mkBar(id, labels, ds, opts={}) {
+  const defaults = {
+    responsive:true, maintainAspectRatio:false,
+    plugins:{ legend:{ position:'top', labels:{ boxWidth:11, font:{size:10} } },
+              tooltip:{ callbacks:{ label: c=>` ${c.dataset.label}: ${(+c.raw||0).toLocaleString()}` } } },
+    scales:{
+      x:{ ticks:{font:{size:10}}, grid:{display:false} },
+      y:{ ticks:{font:{size:9}}, grid:{color:GRID_COLOR} }
+    }
+  };
+  new Chart(document.getElementById(id), { type:'bar',
+    data:{ labels, datasets: ds.map(d=>({borderRadius:4, ...d})) },
+    options:{ ...defaults, ...opts }
+  });
+}
+
+function mkLine(id, labels, ds, opts={}) {
+  const defaults = {
+    responsive:true, maintainAspectRatio:false,
+    plugins:{ legend:{ position:'top', labels:{ boxWidth:11, font:{size:10} } },
+              tooltip:{ callbacks:{ label: c=>` ${c.dataset.label}: ${(+c.raw||0).toLocaleString()}` } } },
+    scales:{
+      x:{ ticks:{font:{size:10}}, grid:{display:false} },
+      y:{ ticks:{font:{size:9}}, grid:{color:GRID_COLOR} }
+    }
+  };
+  new Chart(document.getElementById(id), { type:'line',
+    data:{ labels, datasets: ds.map(d=>({ tension:0.4, pointRadius:5, ...d })) },
+    options:{ ...defaults, ...opts }
+  });
+}
+
+function mkDonut(id, labels, data, colors) {
+  const total = data.reduce((a,b)=>a+b,0);
+  new Chart(document.getElementById(id), {
+    type:'doughnut',
+    data:{ labels, datasets:[{ data, backgroundColor:colors, borderWidth:2, borderColor:'#fff' }] },
+    options:{
+      responsive:true, maintainAspectRatio:false, cutout:'60%',
+      plugins:{
+        legend:{ position:'right', labels:{ boxWidth:10, font:{size:9} } },
+        tooltip:{ callbacks:{ label: c=>` ${c.label}: ${c.raw.toLocaleString()} (${(c.raw/total*100).toFixed(1)}%)` } }
+      }
+    }
+  });
+}
+
+// ════════════════════════════════════════════
+// MID DATA
+// ════════════════════════════════════════════
+const mid = {
+  total25:[10419,10311,9545,11378], total26:[10921,10372,8978,11475],
+  mri25:[1141,1123,1034,1193],     mri26:[1419,1334,1132,1509],
+  ct25:[1210,1200,1081,1204],      ct26:[1266,1203,1084,1345],
+  us25:[2995,3049,3007,3752],      us26:[3226,3058,2944,2884],
+  xray25:[4027,3928,3503,4081],    xray26:[4009,3850,2960,3490],
+  flu25:[188,178,180,185],         flu26:[158,122,143,147],
+  dex25:[250,235,187,295],         dex26:[233,176,150,238],
+  pet25:[95,92,94,112],            pet26:[108,92,88,111],
+  nm25:[124,116,97,134],           nm26:[101,137,92,108],
+  ir25:[389,390,362,422],          ir26:[401,400,379,393],
+  irc25:[13,26,17,13],             irc26:[33,42,42,39],
+};
+const q1=(arr)=>arr[0]+arr[1]+arr[2];
+const q4m=(arr)=>arr[0]+arr[1]+arr[2]+(arr[3]||0);
+const modData = [
+  {n:'MRI',      d25:mid.mri25,  d26:mid.mri26,  color:'#6366f1'},
+  {n:'CT',       d25:mid.ct25,   d26:mid.ct26,   color:'#f59e0b'},
+  {n:'Ultrasound',d25:mid.us25,  d26:mid.us26,   color:'#06b6d4'},
+  {n:'X-Ray',    d25:mid.xray25, d26:mid.xray26, color:'#8b5cf6'},
+  {n:'Fluoro',   d25:mid.flu25,  d26:mid.flu26,  color:'#ec4899'},
+  {n:'DEXA',     d25:mid.dex25,  d26:mid.dex26,  color:'#14b8a6'},
+  {n:'PET-CT',   d25:mid.pet25,  d26:mid.pet26,  color:'#f97316'},
+  {n:'Nuc.Med',  d25:mid.nm25,   d26:mid.nm26,   color:'#84cc16'},
+  {n:'IR',       d25:mid.ir25,   d26:mid.ir26,   color:'#ef4444'},
+  {n:'IR-CathLab',d25:mid.irc25, d26:mid.irc26,  color:'#64748b'},
+];
+
+// ════════════════════════════════════════════
+// LAB DATA
+// ════════════════════════════════════════════
+const lab = {
+  total25:[173041,166676,155455,185303], total26:[186957,175857,158681,208677],
+  sections:[
+    {n:'Pathology',    j:1498, f:1711, m:1496, a:1824},
+    {n:'Blood Bank',   j:1238, f:1278, m:1176, a:1212},
+    {n:'Chemistry',    j:140075,f:131749,m:122028,a:160925},
+    {n:'Coagulation',  j:2270, f:2245, m:2143, a:2441},
+    {n:'Endocrinology',j:7885, f:7537, m:7185, a:10738},
+    {n:'Flow Cytometry',j:54,  f:67,   m:65,   a:78},
+    {n:'Hematology',   j:10417,f:9819, m:8944, a:11120},
+    {n:'Immunology',   j:1098, f:1075, m:1056, a:1613},
+    {n:'Micro GL',     j:1172, f:1089, m:993,  a:1411},
+    {n:'Molecular',    j:2444, f:2294, m:1295, a:1474},
+    {n:'POC',          j:11098,f:9807, m:6348, a:8308},
+    {n:'Send Out',     j:2038, f:1893, m:1291, a:2011},
+    {n:'Serology',     j:1699, f:1503, m:1126, a:1352},
+    {n:'Sp. Chemistry',j:546,  f:564,  m:523,  a:701},
+    {n:'Toxicology',   j:185,  f:199,  m:207,  a:203},
+    {n:'Micro',        j:3240, f:3027, m:2805, a:3266},
+  ],
+  ap25:[3719,5004,5225,4100], ap26:[5242,6102,4504,5100],
+  cy25:[1330,2241,978,1050],  cy26:[1681,1804,1603,1700],
+  ip:[41391,38105,42671,46000], op:[134905,127450,141664,148000], em:[18687,18718,15579,14677],
+  sat:{ // Jan, Feb, Mar, Apr 2026
+    JMC:[4514,3005,3039,3500], ABC:[11071,9850,8270,9500], DMCC:[5763,6003,5288,5800],
+    NSC:[4747,5342,4697,5200], MSC:[4589,4282,3035,3800], AKC:[5138,5729,5392,5900], DHC:[3873,3451,2635,3200]
+  },
+  outreach25:[879,909,866,950], outreach26:[271,316,502,600],
+  sp:{ feb:10774, mar:12060, apr:14500,
+    sections:[
+      {n:'Pathology',f:116,m:179,a:210},{n:'Blood Bank',f:64,m:74,a:85},{n:'Chemistry',f:7963,m:8875,a:10800},
+      {n:'Coagulation',f:123,m:182,a:215},{n:'Endocrinology',f:523,m:658,a:820},{n:'Flow Cytometry',f:4,m:8,a:10},
+      {n:'Hematology',f:674,m:791,a:950},{n:'Immunology',f:82,m:125,a:148},{n:'Micro GL',f:91,m:129,a:155},
+      {n:'Molecular',f:131,m:106,a:95},{n:'POC',f:631,m:393,a:430},{n:'Send Out',f:57,m:104,a:120},
+      {n:'Serology',f:58,m:112,a:130},{n:'Sp. Chemistry',f:38,m:49,a:62},{n:'Toxicology',f:6,m:2,a:3},{n:'Micro',f:213,m:273,a:310}
+    ]
+  }
+};
+
+// ════════════════════════════════════════════
+// OVERVIEW CHARTS
+// ════════════════════════════════════════════
+mkBar('ov-mid-chart', M4, [
+  {label:'2025', data:mid.total25, backgroundColor:'rgba(37,99,235,0.75)'},
+  {label:'2026', data:mid.total26, backgroundColor:'rgba(5,150,105,0.75)'}
+]);
+
+mkBar('ov-lab-chart', M4, [
+  {label:'2025', data:lab.total25, backgroundColor:'rgba(13,148,136,0.55)'},
+  {label:'2026', data:lab.total26, backgroundColor:'rgba(13,148,136,0.85)'}
+], { scales:{ x:{ticks:{font:{size:10}},grid:{display:false}},
+              y:{ticks:{font:{size:9},callback:v=>(v/1000).toFixed(0)+'K'},grid:{color:GRID_COLOR}} } });
+
+mkDonut('ov-mid-donut',
+  modData.map(m=>m.n),
+  modData.map(m=>q4m(m.d26)),
+  modData.map(m=>m.color)
+);
+
+// Lab donut — Chemistry excluded to avoid overwhelming all other slices
+const hemQ1  = lab.sections.find(s=>s.n==='Hematology');
+const hemTot = hemQ1.j+hemQ1.f+hemQ1.m+(hemQ1.a||0);
+const endoQ1 = lab.sections.find(s=>s.n==='Endocrinology');
+const endoTot= endoQ1.j+endoQ1.f+endoQ1.m+(endoQ1.a||0);
+const pocQ1  = lab.sections.find(s=>s.n==='POC');
+const pocTot = pocQ1.j+pocQ1.f+pocQ1.m+(pocQ1.a||0);
+const micQ1  = lab.sections.find(s=>s.n==='Micro');
+const micTot = micQ1.j+micQ1.f+micQ1.m+(micQ1.a||0);
+const molQ1  = lab.sections.find(s=>s.n==='Molecular');
+const molTot = molQ1.j+molQ1.f+molQ1.m+(molQ1.a||0);
+const coagQ1 = lab.sections.find(s=>s.n==='Coagulation');
+const coagTot= coagQ1.j+coagQ1.f+coagQ1.m+(coagQ1.a||0);
+const pathQ1 = lab.sections.find(s=>s.n==='Pathology');
+const pathTot= pathQ1.j+pathQ1.f+pathQ1.m+(pathQ1.a||0);
+const nonChemTot = hemTot+endoTot+pocTot+micTot+molTot+coagTot+pathTot;
+const othersTot2 = (730172-561202) - nonChemTot; // 4-month total minus 4-month chemistry
+
+mkDonut('ov-lab-donut',
+  ['Hematology','Endocrinology','POC','Micro','Molecular','Coagulation','Pathology','Others'],
+  [hemTot,endoTot,pocTot,micTot,molTot,coagTot,pathTot,Math.max(othersTot2,0)],
+  ['#6366f1','#f59e0b','#ec4899','#84cc16','#8b5cf6','#14b8a6','#06b6d4','#94a3b8']
+);
+
+// ════════════════════════════════════════════
+// MID CHARTS
+// ════════════════════════════════════════════
+mkBar('mid-trend', M4, [
+  {label:'2025', data:[10419,10311,9545,11378], backgroundColor:'rgba(37,99,235,0.75)'},
+  {label:'2026', data:[10921,10372,8978,11475], backgroundColor:'rgba(5,150,105,0.75)'}
+]);
+
+mkBar('mid-mod-bar', modData.map(m=>m.n), [
+  {label:'Jan–Apr 2025', data:modData.map(m=>q4m(m.d25)), backgroundColor:'rgba(37,99,235,0.7)'},
+  {label:'Jan–Apr 2026', data:modData.map(m=>q4m(m.d26)), backgroundColor:'rgba(5,150,105,0.7)'}
+]);
+
+const growthRates = modData.map(m=>((q4m(m.d26)-q4m(m.d25))/q4m(m.d25)*100).toFixed(1));
+mkBar('mid-growth-bar', modData.map(m=>m.n), [{
+  label:'Jan–Apr YTD Growth %',
+  data:growthRates,
+  backgroundColor:growthRates.map(r=>parseFloat(r)>=0?'rgba(5,150,105,0.8)':'rgba(220,38,38,0.8)'),
+}], {
+  scales:{
+    x:{ticks:{font:{size:10}},grid:{display:false}},
+    y:{ticks:{font:{size:9},callback:v=>v+'%'},grid:{color:GRID_COLOR}}
+  },
+  plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.raw>0?'+':''}${c.raw}%`}}}
+});
+
+function miniBar(id, d25, d26) {
+  mkBar(id, M4, [
+    {label:'2025', data:d25, backgroundColor:'rgba(37,99,235,0.7)'},
+    {label:'2026', data:d26, backgroundColor:'rgba(5,150,105,0.7)'}
+  ]);
+}
+miniBar('mid-mri',  mid.mri25,  mid.mri26);
+miniBar('mid-ct',   mid.ct25,   mid.ct26);
+miniBar('mid-us',   mid.us25,   mid.us26);
+miniBar('mid-xray', mid.xray25, mid.xray26);
+miniBar('mid-ir',   mid.ir25,   mid.ir26);
+
+// PET + NM
+mkLine('mid-petn', M4, [
+  {label:'PET-CT 2025',data:mid.pet25,borderColor:'#f97316',backgroundColor:'transparent',borderWidth:2},
+  {label:'PET-CT 2026',data:mid.pet26,borderColor:'#f97316',backgroundColor:'transparent',borderDash:[5,3],borderWidth:2},
+  {label:'NM 2025',data:mid.nm25,borderColor:'#84cc16',backgroundColor:'transparent',borderWidth:2},
+  {label:'NM 2026',data:mid.nm26,borderColor:'#84cc16',backgroundColor:'transparent',borderDash:[5,3],borderWidth:2},
+]);
+
+// DEXA + FLUORO
+mkLine('mid-dfx', M4, [
+  {label:'DEXA 2025',data:mid.dex25,borderColor:'#14b8a6',backgroundColor:'transparent',borderWidth:2},
+  {label:'DEXA 2026',data:mid.dex26,borderColor:'#14b8a6',backgroundColor:'transparent',borderDash:[5,3],borderWidth:2},
+  {label:'Fluoro 2025',data:mid.flu25,borderColor:'#ec4899',backgroundColor:'transparent',borderWidth:2},
+  {label:'Fluoro 2026',data:mid.flu26,borderColor:'#ec4899',backgroundColor:'transparent',borderDash:[5,3],borderWidth:2},
+]);
+
+// Annual + Quarterly
+mkBar('mid-annual', ['2023','2024','2025'], [{
+  label:'Annual Studies',
+  data:[85766,106738,115833],
+  backgroundColor:['rgba(148,163,184,0.8)','rgba(245,158,11,0.8)','rgba(37,99,235,0.8)'],
+}], {
+  plugins:{ legend:{display:false}, tooltip:{callbacks:{label:c=>` ${c.raw.toLocaleString()} studies`}} },
+  scales:{x:{ticks:{font:{size:12}},grid:{display:false}},y:{ticks:{font:{size:9},callback:v=>(v/1000).toFixed(0)+'K'},grid:{color:GRID_COLOR}}}
+});
+
+mkBar('mid-quarterly', ['Q1','Q2','Q3','Q4'], [
+  {label:'2023',data:[20441,21212,20662,23451],backgroundColor:'rgba(148,163,184,0.7)'},
+  {label:'2024',data:[25340,25202,26590,29606],backgroundColor:'rgba(245,158,11,0.7)'},
+  {label:'2025',data:[30275,29864,24778,30916],backgroundColor:'rgba(37,99,235,0.7)'},
+  {label:'2026',data:[30271,11475,null,null],backgroundColor:'rgba(5,150,105,0.7)'},
+]);
+
+// ════════════════════════════════════════════
+// LAB CHARTS
+// ════════════════════════════════════════════
+mkBar('lab-trend', M4, [
+  {label:'2025', data:[173041,166676,155455,185303], backgroundColor:'rgba(13,148,136,0.55)'},
+  {label:'2026', data:[186957,175857,158681,208677], backgroundColor:'rgba(13,148,136,0.85)'}
+], { scales:{ x:{ticks:{font:{size:10}},grid:{display:false}},
+              y:{ticks:{font:{size:9},callback:v=>(v/1000).toFixed(0)+'K'},grid:{color:GRID_COLOR}} } });
+
+mkBar('lab-ipop', M4, [
+  {label:'Outpatient',data:lab.op,backgroundColor:'rgba(37,99,235,0.7)'},
+  {label:'Inpatient', data:lab.ip,backgroundColor:'rgba(5,150,105,0.7)'},
+  {label:'Emergency', data:lab.em,backgroundColor:'rgba(245,158,11,0.7)'},
+], { scales:{ x:{ticks:{font:{size:10}},grid:{display:false}},
+              y:{ticks:{font:{size:9},callback:v=>(v/1000).toFixed(0)+'K'},grid:{color:GRID_COLOR}} } });
+
+// Chemistry standalone chart (separated to avoid scale distortion)
+const chemSec = lab.sections.find(s=>s.n==='Chemistry');
+mkBar('lab-chem', M4, [
+  {label:'Chemistry Tests', data:[140075,131749,122028,160925],
+   backgroundColor:['rgba(13,148,136,0.75)','rgba(13,148,136,0.75)','rgba(13,148,136,0.75)','rgba(5,150,105,0.85)']}
+], {
+  plugins:{ legend:{display:false}, tooltip:{callbacks:{label:c=>` ${c.raw.toLocaleString()} tests`}} },
+  scales:{
+    x:{ticks:{font:{size:11}},grid:{display:false}},
+    y:{ticks:{font:{size:9},callback:v=>(v/1000).toFixed(0)+'K'},grid:{color:GRID_COLOR},min:100000}
+  }
+});
+
+// Section bar (total Q1) — Chemistry EXCLUDED
+const sectionQ1 = lab.sections.filter(s=>s.n!=='Chemistry').map(s=>({n:s.n,tot:s.j+s.f+s.m+(s.a||0)})).sort((a,b)=>b.tot-a.tot);
+const secColors = ['#6366f1','#f59e0b','#ec4899','#84cc16','#ef4444','#06b6d4',
+  '#8b5cf6','#f97316','#14b8a6','#94a3b8','#64748b','#d946ef','#22c55e','#fb923c','#60a5fa'];
+mkBar('lab-section-bar', sectionQ1.map(s=>s.n), [{
+  label:'Jan–Apr 2026 Total Tests (excl. Chemistry)',
+  data:sectionQ1.map(s=>s.tot),
+  backgroundColor:secColors,
+}], {
+  plugins:{ legend:{display:false}, tooltip:{callbacks:{label:c=>` ${c.raw.toLocaleString()} tests`}} },
+  scales:{x:{ticks:{font:{size:9}},grid:{display:false}},y:{ticks:{font:{size:9}},grid:{color:GRID_COLOR}}}
+});
+
+// High-volume sections trend — Chemistry EXCLUDED
+const topSecs = ['Hematology','POC','Endocrinology','Micro','Pathology'];
+const secColors2 = ['#6366f1','#ec4899','#f59e0b','#84cc16','#06b6d4'];
+mkLine('lab-section-trend', M4,
+  topSecs.map((n,i)=>{
+    const s = lab.sections.find(x=>x.n===n);
+    return {label:n, data:[s.j,s.f,s.m,s.a||0], borderColor:secColors2[i], backgroundColor:'transparent', borderWidth:2.5};
+  })
+, {
+  scales:{x:{ticks:{font:{size:10}},grid:{display:false}},y:{ticks:{font:{size:9}},grid:{color:GRID_COLOR}}}
+});
+
+// Lower-volume sections trend
+const smallSecs = ['Molecular','Send Out','Serology','Coagulation','Blood Bank','Toxicology'];
+const secColors3 = ['#6366f1','#f59e0b','#ec4899','#14b8a6','#ef4444','#64748b'];
+mkLine('lab-section-small', M4,
+  smallSecs.map((n,i)=>{
+    const s = lab.sections.find(x=>x.n===n);
+    return {label:n, data:[s.j,s.f,s.m,s.a||0], borderColor:secColors3[i], backgroundColor:'transparent', borderWidth:2};
+  })
+);
+
+// AP + Cyto
+miniBar('lab-ap',   lab.ap25,  lab.ap26);
+miniBar('lab-cyto', lab.cy25,  lab.cy26);
+
+// Satellite
+const satNames = Object.keys(lab.sat);
+const satColors = ['#0d9488','#6366f1','#f59e0b','#ec4899','#84cc16','#ef4444','#06b6d4'];
+mkBar('lab-sat', M4,
+  satNames.map((k,i)=>({ label:k, data:lab.sat[k], backgroundColor:satColors[i]+'CC' }))
+, {
+  scales:{x:{ticks:{font:{size:10}},grid:{display:false}},y:{ticks:{font:{size:9}},grid:{color:GRID_COLOR}}}
+});
+
+// Outreach
+mkBar('lab-outreach', M4, [
+  {label:'2025', data:lab.outreach25, backgroundColor:'rgba(37,99,235,0.7)'},
+  {label:'2026', data:lab.outreach26, backgroundColor:'rgba(13,148,136,0.8)'}
+]);
+
+// ════════════════════════════════════════════
+// MID TABLE
+// ════════════════════════════════════════════
+function pillH(val) {
+  const cls = val>0?'pill-up':val<0?'pill-dn':'pill-fl';
+  return `<span class="pill ${cls}">${val>0?'+':''}${val.toLocaleString()}</span>`;
+}
+function pctH(a,b) {
+  const p=((b-a)/a*100).toFixed(1);
+  const cls=parseFloat(p)>0?'pill-up':parseFloat(p)<0?'pill-dn':'pill-fl';
+  return `<span class="pill ${cls}">${parseFloat(p)>0?'+':''}${p}%</span>`;
+}
+
+const midTbl = document.getElementById('mid-tbl');
+let t25=[0,0,0,0], t26=[0,0,0,0];
+modData.forEach(m=>{
+  const q25=q4m(m.d25), q26=q4m(m.d26);
+  [0,1,2,3].forEach(i=>{t25[i]+=(m.d25[i]||0);t26[i]+=(m.d26[i]||0);});
+  midTbl.innerHTML+=`<tr>
+    <td>${m.n}</td>
+    <td>${m.d25[0].toLocaleString()}</td><td>${m.d26[0].toLocaleString()}</td><td>${pillH(m.d26[0]-m.d25[0])}</td>
+    <td>${m.d25[1].toLocaleString()}</td><td>${m.d26[1].toLocaleString()}</td><td>${pillH(m.d26[1]-m.d25[1])}</td>
+    <td>${m.d25[2].toLocaleString()}</td><td>${m.d26[2].toLocaleString()}</td><td>${pillH(m.d26[2]-m.d25[2])}</td>
+    <td>${(m.d25[3]||0).toLocaleString()}</td><td>${(m.d26[3]||0).toLocaleString()}</td><td>${pillH((m.d26[3]||0)-(m.d25[3]||0))}</td>
+    <td>${q25.toLocaleString()}</td><td>${q26.toLocaleString()}</td><td>${pctH(q25,q26)}</td>
+  </tr>`;
+});
+const tq25=t25.reduce((a,b)=>a+b,0), tq26=t26.reduce((a,b)=>a+b,0);
+midTbl.innerHTML+=`<tr>
+  <td>TOTAL</td>
+  <td>${t25[0].toLocaleString()}</td><td>${t26[0].toLocaleString()}</td><td>${pillH(t26[0]-t25[0])}</td>
+  <td>${t25[1].toLocaleString()}</td><td>${t26[1].toLocaleString()}</td><td>${pillH(t26[1]-t25[1])}</td>
+  <td>${t25[2].toLocaleString()}</td><td>${t26[2].toLocaleString()}</td><td>${pillH(t26[2]-t25[2])}</td>
+  <td>${t25[3].toLocaleString()}</td><td>${t26[3].toLocaleString()}</td><td>${pillH(t26[3]-t25[3])}</td>
+  <td>${tq25.toLocaleString()}</td><td>${tq26.toLocaleString()}</td><td>${pctH(tq25,tq26)}</td>
+</tr>`;
+
+// ════════════════════════════════════════════
+// LAB TABLE
+// ════════════════════════════════════════════
+const labTbl = document.getElementById('lab-tbl');
+const grandTotal26 = 730172; // 4-month total Jan-Apr 2026
+let labTotJ=0,labTotF=0,labTotM=0,labTotA=0;
+lab.sections.forEach(s=>{
+  const a=s.a||0;
+  const tot=s.j+s.f+s.m+a;
+  const mom=((a-s.m)/s.m*100).toFixed(1);
+  const yoy=s.n==='Chemistry'?((a-138603)/138603*100).toFixed(1):null;
+  const momCls=parseFloat(mom)>=0?'num-up':'num-dn';
+  const share=(tot/grandTotal26*100).toFixed(1);
+  labTotJ+=s.j;labTotF+=s.f;labTotM+=s.m;labTotA+=a;
+  labTbl.innerHTML+=`<tr>
+    <td>${s.n}</td>
+    <td>${s.j.toLocaleString()}</td><td>${s.f.toLocaleString()}</td><td>${s.m.toLocaleString()}</td>
+    <td>${a.toLocaleString()}</td>
+    <td>${tot.toLocaleString()}</td>
+    <td class="${momCls}">${parseFloat(mom)>0?'+':''}${mom}%</td>
+    <td>${share}%</td>
+  </tr>`;
+});
+const labTotAll=labTotJ+labTotF+labTotM+labTotA;
+const labMoMApr=((labTotA-labTotM)/labTotM*100).toFixed(1);
+labTbl.innerHTML+=`<tr>
+  <td>TOTAL</td>
+  <td>${labTotJ.toLocaleString()}</td><td>${labTotF.toLocaleString()}</td><td>${labTotM.toLocaleString()}</td>
+  <td>${labTotA.toLocaleString()}</td>
+  <td>${labTotAll.toLocaleString()}</td>
+  <td class="${parseFloat(labMoMApr)>=0?'num-up':'num-dn'}">${parseFloat(labMoMApr)>0?'+':''}${labMoMApr}%</td>
+  <td>100%</td>
+</tr>`;
+
+// Science Park Table
+const spTbl = document.getElementById('lab-sp-tbl');
+let spTotF=0,spTotM=0,spTotA=0;
+lab.sp.sections.forEach(s=>{
+  const a=s.a||0;
+  const chg=((a-s.m)/s.m*100).toFixed(1);
+  const cls=parseFloat(chg)>=0?'num-up':'num-dn';
+  spTotF+=s.f;spTotM+=s.m;spTotA+=a;
+  spTbl.innerHTML+=`<tr>
+    <td>${s.n}</td><td>${s.f.toLocaleString()}</td><td>${s.m.toLocaleString()}</td>
+    <td>${a.toLocaleString()}</td>
+    <td class="${cls}">${parseFloat(chg)>0?'+':''}${chg}%</td>
+  </tr>`;
+});
+const spChg=((spTotA-spTotM)/spTotM*100).toFixed(1);
+spTbl.innerHTML+=`<tr>
+  <td>TOTAL</td><td>${spTotF.toLocaleString()}</td><td>${spTotM.toLocaleString()}</td>
+  <td>${spTotA.toLocaleString()}</td>
+  <td class="${parseFloat(spChg)>=0?'num-up':'num-dn'}">${parseFloat(spChg)>0?'+':''}${spChg}%</td>
+</tr>`;
+
+// ════════════════════════════════════════════
+// APRIL 1–28 DATA (near-final actuals from PPTX)
+// ════════════════════════════════════════════
+// Main (Oud Metha): 9,779 (Apr1-30) - from Excel
+
+
+// 4-month trend data - UPDATED with April 1-30 final actuals and corrected MID
+
+
+
+
+
+// ════════════════════════════════════════════
+// TAB NAVIGATION
+// ════════════════════════════════════════════
+function switchTab(el, id) {
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.top-tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('sec-'+id).classList.add('active');
+  el.classList.add('active');
+}
+</script>
+</body>
+</html>
